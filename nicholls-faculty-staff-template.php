@@ -18,7 +18,24 @@ get_header();
 
 			<div class="blogpost">
 
+<?php the_post_thumbnail('nicholls-fs-medium'); ?>
+
+<?php the_post_thumbnail('nicholls-fs-thumb'); ?>
+
+
 			<?php the_content(); ?>
+
+<?php 
+$custom_fields = get_post_custom();
+
+print_r( $custom_fields );
+
+foreach ( $custom_fields as $field_key => $field_values ) {
+	//if(!isset($field_values[0])) continue;
+	echo $field_key . '=>' . $field_values[0] . '<br />';
+}			
+?>
+			
 			</div>
 
 			<?php endwhile; ?>
