@@ -236,14 +236,14 @@ function nicholls_fs_metaboxes( array $meta_boxes ) {
 					array(
 						'name' => __( 'Course Day', 'cmb' ),
 						'desc' => __( 'Input meeting days (typically format as M/W/F,T/Th, or similar)', 'cmb' ),
-						'id'   => $prefix . 'course_meeting_days',
+						'id'   => 'course_meeting_days',
 						'time_format' => 'l',
 						'type' => 'text',
 					),
 					array(
 						'name' => __( 'Class Time', 'cmb' ),
 						'desc' => __( 'Format as XX:XX or use suggested format', 'cmb' ),
-						'id'   => $prefix . 'course_meeting_times',
+						'id'   => 'course_meeting_times',
 						'type' => 'text_time',
 					),											
 				),
