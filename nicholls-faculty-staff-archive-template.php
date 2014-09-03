@@ -10,27 +10,35 @@
 ?>
 <?php get_header() ?>
 
+<h1><?php post_type_archive_title(); ?></h1>
 
-		<!-- START: template_archive -->
-		<?php do_action( 'fnbx_template_archive_start', 'template_archive' ) ?>
+<?php
+$args=array(
+  'order'=>'ASC',
+  'orderby'=> 'menu_order',
+  'post_type' => 'n-faculty-staff',
+  'post_status' => 'publish',
+  'posts_per_page' => 100
+);
+query_posts($args);
+?>
 
-			<?php
-			/* Run The Loop
-			 *
-			 * If you want to overload this in a child theme then include a file
-			 * called fnbx-loop-archive.php and that will be used instead.
-			 * We also put the template part name 'archive' into the global
-			 * $fnbx->template_part_name so you can use it.
-			 */
+<?php while ( have_posts() ) : the_post() ?>
+<div class="nicholls-fs-employee clear-group">
 
-			 // Filter to catch this loop template part name into gloabal $fnbx
-			 global $fnbx;
-			 add_filter( 'get_template_part_fnbx-loop', array(&$fnbx, 'get_template_part_filter'), 1, 2 );
-			 get_template_part( 'fnbx-loop', 'archive' );
-			 
-			?>
+	<div class="nicholls-fs-photo">
+	<a href="<?php echo get_permalink(); ?>"><?php the_post_thumbnail('nicholls-fs-thumb'); ?></a>
+	</div>
+	<div class="nicholls-fs-info">
+		<h2 class="nicholls-fs-name"><a href="<?php echo get_permalink(); ?>"><?php the_title(); ?></a></h2>
+		<div class="nicholls-fs-title"><?php echo get_post_meta( get_the_ID(), '_nicholls_fs_employee_title', true ); ?></div>
+		<div class="nicholls-fs-email"><strong>Email:</strong> <?php echo get_post_meta( get_the_ID(), '_nicholls_fs_employee_email', true ); ?></div>
+		<div class="nicholls-fs-phone"><strong>Phone:</strong> <?php echo get_post_meta( get_the_ID(), '_nicholls_fs_phone', true ); ?></div>
+		<div class="nicholls-fs-office"><strong>Office Location:</strong> <?php echo get_post_meta( get_the_ID(), '_nicholls_fs_office', true ); ?></div>
+	</div>
 
-this is the archive it should be working!!!
+</div>
+<?php endwhile; ?>
 
 		<?php do_action( 'fnbx_template_archive_end', 'template_archive' ) ?>
 		<!-- END: template_archive -->
