@@ -23,6 +23,70 @@ if ( !function_exists( 'cmb_initialize_cmb_meta_boxe' ) ) {
 add_action( 'init', 'cmb_initialize_cmb_meta_boxes', 9999 );
 
 /**
+* Email contact form
+*
+*/
+function nicholls_fs_email_form() { ?>
+	<div class="nicholls-fs-form">
+		<form id="nicholls-fs-form-email">
+			Your Name <br/>
+			<input id="nicholls-fs-form-email-name" class="text" type="text" name="nicholls-fs-form-email-name"/><br/>
+			Your Email <br/>
+			<input id="nicholls-fs-form-email-email" class="text" type="text" name="nicholls-fs-form-email-email"/><br/>
+			Your Message <br/>
+			<textarea id="nicholls-fs-form-email-message" class="textarea" name="nicholls-fs-form-email-message"></textarea><br/>
+			<input name="nicholls-fs-form-email-action" type="hidden" value="nicholls-fs-form-email" /><br/>
+			<?php wp_nonce_field( 'nicholls_fs_email_form', 'nicholls_fs_email_form_nonce' ); ?>
+			<input id="scfs" class="button" type="submit" name="scfs" value="Send Message"/>
+			<img class="nicholls-fs-form-email-ajax-image" src="<?php echo plugins_url( 'images/11kguf4.gif', __FILE__ ); ?>" alt="Sending Message">
+			<div class="nicholls-fs-form-email-message"><p></p></div>
+		<form>
+	</div>
+<?php } 
+
+/**
+* Email contact form - JavaScript
+*
+*/
+function nicholls_fs_js_enqueue() {
+
+	if ( 'n-faculty-staff' != get_post_type() ) return;
+	
+	//Enqueue jQuery if not already loaded
+	wp_enqueue_script('jquery');
+	wp_enqueue_script('nicholls-fs-js', plugins_url( 'js/nicholls-fs.js' , __FILE__ ), array('jquery'));
+
+	$localize = array(
+		'ajaxurl' => admin_url( 'admin-ajax.php' )
+	);
+	wp_localize_script('nicholls-fs-js', 'SCF', $localize);
+}
+add_action( 'wp_enqueue_scripts', 'nicholls_fs_js_enqueue' );
+
+/**
+* Email contact form - Ajax actions
+*
+*/
+function nicholls_fs_ajax_simple_contact_form() {
+
+	if ( isset( $_POST['scf_nonce'] ) && wp_verify_nonce( $_POST['nicholls_fs_email_form_nonce'], 'nicholls_fs_email_form' ) ) {
+		$name = sanitize_text_field($_POST['nicholls-fs-form-email-name']);
+		$email = sanitize_email($_POST['nicholls-fs-form-email-email']);
+		$message = wp_kses_data($_POST['scfm']);
+
+		$headers[] = 'From: ' . $name . ' <' . $email . '>' . "\r\n";
+		$headers[] = 'Content-type: text/html' . "\r\n"; //Enables HTML ContentType. Remove it for Plain Text Messages
+		$to = get_option( 'admin_email' );
+
+		wp_mail( $to, $subject, $message, $headers );
+	}
+	die(); // Important
+}
+add_action( 'wp_ajax_simple_contact_form', 'nicholls_fs_ajax_simple_contact_form' );
+add_action( 'wp_ajax_nopriv_simple_contact_form', 'nicholls_fs_ajax_simple_contact_form' );
+
+
+/**
 * Load resources when shortcode is detected. Only for CSS and Scripts since we're
 * running on wp_enqueue_script.
 * @author Ian Dunn <ian@iandunn.name> - original author
