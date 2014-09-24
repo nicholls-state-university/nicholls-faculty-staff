@@ -28,7 +28,7 @@ add_action( 'init', 'cmb_initialize_cmb_meta_boxes', 9999 );
 */
 function nicholls_fs_email_form() { ?>
 	<div class="nicholls-fs-form">
-		<form id="nicholls-fs-form-email">
+		<form id="nicholls-fs-form-email" class="white-popup-block mfp-hide">
 			Your Name <br/>
 			<input id="nicholls-fs-form-email-name" class="text" type="text" name="nicholls-fs-form-email-name"/><br/>
 			Your Email <br/>
@@ -52,14 +52,18 @@ function nicholls_fs_js_enqueue() {
 
 	if ( 'n-faculty-staff' != get_post_type() ) return;
 	
-	//Enqueue jQuery if not already loaded
+	//Enqueue Javascript & jQuery if not already loaded
 	wp_enqueue_script('jquery');
 	wp_enqueue_script('nicholls-fs-js', plugins_url( 'js/nicholls-fs.js' , __FILE__ ), array('jquery'));
+	wp_enqueue_script('magnific-popup-js', plugins_url( 'Magnific-Popup-master/dist/jquery.magnific-popup.min.js' , __FILE__ ), array('jquery'));
+	
+	// Enqueue CSS
+	wp_enqueue_style( 'magnific-popup-css', plugins_url( 'Magnific-Popup-master/dist/magnific-popup.css' , __FILE__ ) );
 
 	$localize = array(
 		'ajaxurl' => admin_url( 'admin-ajax.php' )
 	);
-	wp_localize_script('nicholls-fs-js', 'SCF', $localize);
+	wp_localize_script('nicholls-fs-js', 'nicholls_fs_js_obj', $localize);
 }
 add_action( 'wp_enqueue_scripts', 'nicholls_fs_js_enqueue' );
 
