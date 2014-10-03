@@ -27,15 +27,17 @@ add_action( 'init', 'cmb_initialize_cmb_meta_boxes', 9999 );
 *
 */
 function nicholls_fs_email_form() { ?>
-	<div class="nicholls-fs-form">
+	<div id="nicholls-fs-form" class="nicholls-fs-form-">
 		<form id="nicholls-fs-form-email" class="white-popup-block mfp-hide">
+			<div id="nicholls-fs-form-message-top" class="nicholls-fs-form-message-top-"></div>
 			Your Name <br/>
 			<input id="nicholls-fs-form-email-name" class="text" type="text" name="nicholls-fs-form-email-name"/><br/>
 			Your Email <br/>
 			<input id="nicholls-fs-form-email-email" class="text" type="text" name="nicholls-fs-form-email-email"/><br/>
 			Your Message <br/>
 			<textarea id="nicholls-fs-form-email-message" class="textarea" name="nicholls-fs-form-email-message"></textarea><br/>
-			<input name="nicholls-fs-form-email-action" type="hidden" value="nicholls-fs-form-email" /><br/>
+			<input name="action" type="hidden" value="nicholls-fs-form-email" />
+			<input name="nicholls-fs-form-email-addr" type="hidden" value="" />
 			<?php wp_nonce_field( 'nicholls_fs_email_form', 'nicholls_fs_email_form_nonce' ); ?>
 			<input id="scfs" class="button" type="submit" name="scfs" value="Send Message"/>
 			<img class="nicholls-fs-form-email-ajax-image" src="<?php echo plugins_url( 'images/11kguf4.gif', __FILE__ ); ?>" alt="Sending Message">
@@ -43,6 +45,14 @@ function nicholls_fs_email_form() { ?>
 		<form>
 	</div>
 <?php } 
+
+
+function nicholls_fs_get_url() {
+	  $url  = @( $_SERVER["HTTPS"] != 'on' ) ? 'http://'.$_SERVER["SERVER_NAME"] :  'https://'.$_SERVER["SERVER_NAME"];
+	  $url .= ( $_SERVER["SERVER_PORT"] !== 80 ) ? ":".$_SERVER["SERVER_PORT"] : "";
+	  $url .= $_SERVER["REQUEST_URI"];
+	  return $url;
+}
 
 /**
 * Email contact form - JavaScript
@@ -73,21 +83,29 @@ add_action( 'wp_enqueue_scripts', 'nicholls_fs_js_enqueue' );
 */
 function nicholls_fs_ajax_simple_contact_form() {
 
-	if ( isset( $_POST['scf_nonce'] ) && wp_verify_nonce( $_POST['nicholls_fs_email_form_nonce'], 'nicholls_fs_email_form' ) ) {
+	if ( isset( $_POST['nicholls_fs_email_form_nonce'] ) && wp_verify_nonce( $_POST['nicholls_fs_email_form_nonce'], 'nicholls_fs_email_form' ) ) {
+
 		$name = sanitize_text_field($_POST['nicholls-fs-form-email-name']);
 		$email = sanitize_email($_POST['nicholls-fs-form-email-email']);
-		$message = wp_kses_data($_POST['scfm']);
+		$message = wp_kses_data($_POST['nicholls-fs-form-email-message']);
+		$subject = '[nicholls web] Message from ' . $name; 
+		
+		$to = sanitize_email($_POST['nicholls-fs-form-email-addr']);
 
 		$headers[] = 'From: ' . $name . ' <' . $email . '>' . "\r\n";
+		$headers[] = 'Reply-To: ' . $name . ' <' . $email . '>' . "\r\n";
 		$headers[] = 'Content-type: text/html' . "\r\n"; //Enables HTML ContentType. Remove it for Plain Text Messages
-		$to = get_option( 'admin_email' );
+		
+		$message .= "\r\n" . 'This messange sent using a form found at: ' . nicholls_fs_get_url() . "\r\n" . 'Please contact nichweb@nicholls.edu for support.';
+		
+		$check = wp_mail( $to, $subject, $message, $headers );
 
-		wp_mail( $to, $subject, $message, $headers );
 	}
+
 	die(); // Important
 }
-add_action( 'wp_ajax_simple_contact_form', 'nicholls_fs_ajax_simple_contact_form' );
-add_action( 'wp_ajax_nopriv_simple_contact_form', 'nicholls_fs_ajax_simple_contact_form' );
+add_action( 'wp_ajax_nicholls-fs-form-email', 'nicholls_fs_ajax_simple_contact_form' );
+add_action( 'wp_ajax_nopriv_nicholls-fs-form-email', 'nicholls_fs_ajax_simple_contact_form' );
 
 
 /**
