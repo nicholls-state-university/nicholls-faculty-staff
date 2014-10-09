@@ -23,7 +23,7 @@ get_header();
 			<div class="nicholls-fs-info">
 				<div class="nicholls-fs-name"><h2><?php the_title(); ?></h2></div>
 				<div class="nicholls-fs-title"><?php echo get_post_meta( get_the_ID(), '_nicholls_fs_employee_title', true ); ?></div>
-				<div class="nicholls-fs-email"><strong>Email:</strong> <?php echo get_post_meta( get_the_ID(), '_nicholls_fs_employee_email', true ); ?></div>
+				<div class="nicholls-fs-email"><strong>Email:</strong> <a class="nicholls-fs-modal-email" href="mailto:<?php echo get_post_meta( get_the_ID(), '_nicholls_fs_employee_email', true ); ?>"><?php echo get_post_meta( get_the_ID(), '_nicholls_fs_employee_email', true ); ?></a></div>
 				<div class="nicholls-fs-phone"><strong>Phone:</strong> <?php echo get_post_meta( get_the_ID(), '_nicholls_fs_phone', true ); ?></div>
 				<div class="nicholls-fs-office"><strong>Office Location:</strong> <?php echo get_post_meta( get_the_ID(), '_nicholls_fs_office', true ); ?></div>
 			</div>
@@ -62,7 +62,7 @@ foreach ( $nicholls_fs_courses as $course => $course_info ) {
 				</div>
 <?php endif; ?>
 
-<?php // ISSUE: Disabled nicholls_fs_email_form(); ?>
+<?php nicholls_fs_email_form(); ?>
 <?php 
 // Deebug
 /*
