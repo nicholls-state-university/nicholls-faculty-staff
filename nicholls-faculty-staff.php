@@ -153,20 +153,56 @@ function nicholls_fs_init() {
                 'not_found' => __( 'No faculty & ftaff found' ),
                 'not_found_in_trash' => __( 'No faculty & staff found in trash' )
 		),
+		'taxonomies'    => array(
+			'n-faculty-staff-taxonomy',
+		),		
         'public' => true, 
         'show_ui' => true,  
         'capability_type' => 'post',  
         'hierarchical' => true,
         'has_archive' => true,
-        'rewrite' => array( 'slug' => 'faculty-staff'),  
+        'rewrite' => array( 
+			'slug' => 'faculty-staff',
+			'with_front' => false
+		),  
         'supports' => array('title', 'editor', 'thumbnail', 'revisions', 'page-attributes'),
-        'register_meta_box_cb' => 'nicholls_fs_add_metaboxes' 
+        'register_meta_box_cb' => 'nicholls_fs_add_metaboxes'
        );  
     register_post_type( 'n-faculty-staff' , $args );
+
+	register_taxonomy(
+		'n-faculty-staff-taxonomy',
+		array(
+			'n-faculty-staff',
+		),
+		array(
+			'labels'            => array(
+				'name'              => _x('Departments', 'prefix_portfolio', 'text_domain'),
+				'singular_name'     => _x('Department', 'prefix_portfolio', 'text_domain'),
+				'menu_name'         => __('Departments', 'text_domain'),
+				'all_items'         => __('All Departments', 'text_domain'),
+				'edit_item'         => __('Edit Department', 'text_domain'),
+				'view_item'         => __('View Department', 'text_domain'),
+				'update_item'       => __('Update Department', 'text_domain'),
+				'add_new_item'      => __('Add New Department', 'text_domain'),
+				'new_item_name'     => __('New Department Name', 'text_domain'),
+				'search_items'      => __('Search Departments', 'text_domain'),
+			),
+			'show_admin_column' => true,
+			'hierarchical'      => true,
+			'rewrite'           => array( 
+				'slug' => 'faculty-staff-departments',
+				'with_front' => false
+			),
+		)
+	);
     
     // Setup custom image size  
     add_image_size( 'nicholls-fs-medium', 240, 360 );
     add_image_size( 'nicholls-fs-thumb', 120, 180 );
+    
+	// Needs moved to activation after testing
+	flush_rewrite_rules( false );
     
 }  
 add_action('init', 'nicholls_fs_init');
@@ -217,12 +253,18 @@ function nicholls_fs_template_smart(){
           exit();
         }
 
+    } else if ( is_tax( 'n-faculty-staff-taxonomy' ) ) {
+
+        $template = locate_template( array( $archive_template_name ), true );
+        if(empty($template)) {
+          include( $fs_template_dir . '/' . $archive_template_name);
+          exit();
+        }
+            
     }
 
 }
 add_filter('template_redirect', 'nicholls_fs_template_smart');
-
-
 
 
 
@@ -251,12 +293,23 @@ function nicholls_fs_metaboxes( array $meta_boxes ) {
 				'desc'       => __( 'field description (optional)', 'cmb' ),
 				'id'         => $prefix . 'employee_title',
 				'type'       => 'text',
-				'show_on_cb' => 'cmb_test_text_show_on_cb', // function should return a bool value
+				// 'show_on_cb' => 'cmb_test_text_show_on_cb', // function should return a bool value
 				// 'sanitization_cb' => 'my_custom_sanitization', // custom sanitization callback parameter
 				// 'escape_cb'       => 'my_custom_escaping',  // custom escaping callback parameter
 				// 'on_front'        => false, // Optionally designate a field to wp-admin only
 				// 'repeatable'      => true,
 			),	
+			array(
+				'name'       => __( 'Employee Departmnet', 'cmb' ),
+				'desc'       => __( 'field description (optional)', 'cmb' ),
+				'id'         => $prefix . 'employee_dept',
+				'type'       => 'text',
+				// 'show_on_cb' => 'cmb_test_text_show_on_cb', // function should return a bool value
+				// 'sanitization_cb' => 'my_custom_sanitization', // custom sanitization callback parameter
+				// 'escape_cb'       => 'my_custom_escaping',  // custom escaping callback parameter
+				// 'on_front'        => false, // Optionally designate a field to wp-admin only
+				// 'repeatable'      => true,
+			),			
 			array(
 				'name' => __( 'Employee Email', 'cmb' ),
 				'desc' => __( 'field description (optional)', 'cmb' ),
@@ -375,7 +428,7 @@ function cmb_sample_metaboxes( array $meta_boxes ) {
 				'desc'       => __( 'field description (optional)', 'cmb' ),
 				'id'         => $prefix . 'test_text',
 				'type'       => 'text',
-				'show_on_cb' => 'cmb_test_text_show_on_cb', // function should return a bool value
+				// 'show_on_cb' => 'cmb_test_text_show_on_cb', // function should return a bool value to show
 				// 'sanitization_cb' => 'my_custom_sanitization', // custom sanitization callback parameter
 				// 'escape_cb'       => 'my_custom_escaping',  // custom escaping callback parameter
 				// 'on_front'        => false, // Optionally designate a field to wp-admin only
@@ -739,4 +792,50 @@ function cmb_sample_metaboxes( array $meta_boxes ) {
 	// Add other metaboxes as needed
 
 	return $meta_boxes;
+}
+
+
+/**
+* Display custom meta based on meta key
+*
+*/
+function nicholls_fs_display_meta_item( $meta_item = '', $return = false ) {
+
+	$meta_items = array(
+		'_nicholls_fs_employee_title' => array(
+			'name' => 'Title',
+			'class' => 'nicholls-fs-title'
+		),
+		'_nicholls_fs_employee_dept' => array(
+			'name' => 'Department',
+			'class' => 'nicholls-fs-dept'
+		),
+		'_nicholls_fs_employee_email' => array(
+			'name' => 'Email',
+			'class' => 'nicholls-fs-email'
+		),
+		'_nicholls_fs_phone' => array(
+			'name' => 'Phone',
+			'class' => 'nicholls-fs-phone'
+		),
+		'_nicholls_fs_office' => array(
+			'name' => 'Office Location',
+			'class' => 'nicholls-fs-office'
+		)
+	);
+
+	$meta_item_data = get_post_meta( get_the_ID(), $meta_item, true );
+	
+	if ( empty( $meta_item_data ) ) return;
+	
+	if ( $meta_item == '_nicholls_fs_employee_email' )
+		$display = '<div class="' . $meta_items[$meta_item]['class'] . '"><strong>' . $meta_items[$meta_item]['name'] . ':</strong> <a class="nicholls-fs-modal-email" href="mailto:' . $meta_item_data . '">' . $meta_item_data . '</a></div>';
+	else
+		$display = '<div class="' . $meta_items[$meta_item]['class'] . '"><strong>' . $meta_items[$meta_item]['name'] . ':</strong> ' . $meta_item_data . '</div>';
+	
+	if ( !$return )
+		echo $display;
+	else
+		return $display;
+
 }
