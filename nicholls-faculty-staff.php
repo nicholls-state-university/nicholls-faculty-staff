@@ -208,7 +208,7 @@ function nicholls_fs_init() {
         'public' => true, 
         'show_ui' => true,  
         'capability_type' => 'post',  
-        'hierarchical' => true,
+        'hierarchical' => false,
         'has_archive' => true,
         'rewrite' => array( 
 			'slug' => 'faculty-staff',
