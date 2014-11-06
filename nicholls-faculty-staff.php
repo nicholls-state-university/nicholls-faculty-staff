@@ -22,6 +22,13 @@ if ( !function_exists( 'cmb_initialize_cmb_meta_boxe' ) ) {
 }
 add_action( 'init', 'cmb_initialize_cmb_meta_boxes', 9999 );
 
+
+function nicholls_fs_url_filter( $c_url ) {
+	$c_url = str_replace( 'http://', '//', $c_url );
+	return $c_url;
+}
+add_filter('cmb_meta_box_url', 'nicholls_fs_url_filter');
+
 /**
 * Email contact form
 *
