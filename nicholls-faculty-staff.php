@@ -30,14 +30,21 @@ function nicholls_fs_email_form() { ?>
 	<div id="nicholls-fs-form" class="nicholls-fs-form-">
 		<form id="nicholls-fs-form-email" class="white-popup-block mfp-hide">
 			<div id="nicholls-fs-form-message-top" class="nicholls-fs-form-message-top-"></div>
-			Your Name <br/>
-			<input id="nicholls-fs-form-email-name" class="text" type="text" name="nicholls-fs-form-email-name"/><br/>
-			Your Email <br/>
-			<input id="nicholls-fs-form-email-email" class="text" type="text" name="nicholls-fs-form-email-email"/><br/>
-			Your Message <br/>
-			<textarea id="nicholls-fs-form-email-message" class="textarea" name="nicholls-fs-form-email-message"></textarea><br/>
+			<div id="nicholls-fs-form-name" class="nicholls-fs-form-name-">
+				Your Name <br/>
+				<input id="nicholls-fs-form-email-name" class="text" type="text" name="nicholls-fs-form-email-name"/>
+			</div>
+			<div id="nicholls-fs-form-email" class="nicholls-fs-form-email-">
+				Your Email <br/>
+				<input id="nicholls-fs-form-email-email" class="text" type="text" name="nicholls-fs-form-email-email"/>
+			</div>
+			<div id="nicholls-fs-form-message" class="nicholls-fs-form-message-">
+				Your Message <br/>
+				<textarea id="nicholls-fs-form-email-message" class="textarea" name="nicholls-fs-form-email-message"></textarea>
+			</div>
 			<input name="action" type="hidden" value="nicholls-fs-form-email" />
 			<input name="nicholls-fs-form-email-addr" type="hidden" value="" />
+			<input name="nicholls-fs-form-url" type="hidden" value="<?php the_permalink(); ?>" />
 			<?php wp_nonce_field( 'nicholls_fs_email_form', 'nicholls_fs_email_form_nonce' ); ?>
 			<input id="scfs" class="button" type="submit" name="scfs" value="Send Message"/>
 			<img class="nicholls-fs-form-email-ajax-image" src="<?php echo plugins_url( 'images/11kguf4.gif', __FILE__ ); ?>" alt="Sending Message">
@@ -87,8 +94,9 @@ function nicholls_fs_ajax_simple_contact_form() {
 
 		$name = sanitize_text_field($_POST['nicholls-fs-form-email-name']);
 		$email = sanitize_email($_POST['nicholls-fs-form-email-email']);
-		$message = wp_kses_data($_POST['nicholls-fs-form-email-message']);
-		$subject = '[nicholls web] Message from ' . $name; 
+		$message = stripslashes( wp_filter_kses($_POST['nicholls-fs-form-email-message']) );
+		$form_url = esc_url( $_POST['nicholls-fs-form-url'] );
+		$subject = 'Nicholls Web Email - Message from ' . $name; 
 		
 		$to = sanitize_email($_POST['nicholls-fs-form-email-addr']);
 
@@ -96,9 +104,12 @@ function nicholls_fs_ajax_simple_contact_form() {
 		$headers[] = 'Reply-To: ' . $name . ' <' . $email . '>' . "\r\n";
 		$headers[] = 'Content-type: text/html' . "\r\n"; //Enables HTML ContentType. Remove it for Plain Text Messages
 		
-		$message .= "\r\n" . 'This messange sent using a form found at: ' . nicholls_fs_get_url() . "\r\n" . 'Please contact nichweb@nicholls.edu for support.';
+		$message = '<br/>' . $message . '<br/><br/><hr/>This messange sent using a form found at: ' . $form_url . '<br/>Please contact nichweb@nicholls.edu for support.';
 		
+		add_filter('wp_mail_content_type',create_function('', 'return "text/html";'));
 		$check = wp_mail( $to, $subject, $message, $headers );
+		
+		wp_send_json_error( $check );
 
 	}
 
@@ -107,6 +118,37 @@ function nicholls_fs_ajax_simple_contact_form() {
 add_action( 'wp_ajax_nicholls-fs-form-email', 'nicholls_fs_ajax_simple_contact_form' );
 add_action( 'wp_ajax_nopriv_nicholls-fs-form-email', 'nicholls_fs_ajax_simple_contact_form' );
 
+/**
+* Configure SMTP & Advanced PHPMail options
+*/
+add_action( 'phpmailer_init', 'nicholls_fs_configure_smtp', 999 );
+function nicholls_fs_configure_smtp( $phpmailer ){
+
+    $phpmailer->From = 'nichweb@nicholls.edu';
+    $phpmailer->FromName='Nicholls Webmanager';
+	$phpmailer->Sender = 'nichweb@nicholls.edu';
+
+	/*
+	* Expception handling for PHPMailer to catch errors for ajax requests.
+	* see: https://gist.github.com/franz-josef-kaiser/5840282
+	*/
+	/*
+	$error = null;
+	try {
+		$sent = $phpmailer->Send();
+		! $sent AND $error = new WP_Error( 'phpmailerError', $sent->ErrorInfo );
+	}
+	catch ( phpmailerException $e ) {
+		$error = new WP_Error( 'phpmailerException', $e->errorMessage() );
+	}
+	catch ( Exception $e ) {
+		$error = new WP_Error( 'defaultException', $e->getMessage() );
+	}
+ 
+	if ( is_wp_error( $error ) )
+		return printf( "%s: %s", $error->get_error_code(), $error->get_error_message() );
+	*/
+}
 
 /**
 * Load resources when shortcode is detected. Only for CSS and Scripts since we're
@@ -153,20 +195,56 @@ function nicholls_fs_init() {
                 'not_found' => __( 'No faculty & ftaff found' ),
                 'not_found_in_trash' => __( 'No faculty & staff found in trash' )
 		),
+		'taxonomies'    => array(
+			'n-faculty-staff-taxonomy',
+		),		
         'public' => true, 
         'show_ui' => true,  
         'capability_type' => 'post',  
         'hierarchical' => true,
         'has_archive' => true,
-        'rewrite' => array( 'slug' => 'faculty-staff'),  
+        'rewrite' => array( 
+			'slug' => 'faculty-staff',
+			'with_front' => false
+		),  
         'supports' => array('title', 'editor', 'thumbnail', 'revisions', 'page-attributes'),
-        'register_meta_box_cb' => 'nicholls_fs_add_metaboxes' 
+        'register_meta_box_cb' => 'nicholls_fs_add_metaboxes'
        );  
     register_post_type( 'n-faculty-staff' , $args );
+
+	register_taxonomy(
+		'n-faculty-staff-taxonomy',
+		array(
+			'n-faculty-staff',
+		),
+		array(
+			'labels'            => array(
+				'name'              => _x('Departments', 'prefix_portfolio', 'text_domain'),
+				'singular_name'     => _x('Department', 'prefix_portfolio', 'text_domain'),
+				'menu_name'         => __('Departments', 'text_domain'),
+				'all_items'         => __('All Departments', 'text_domain'),
+				'edit_item'         => __('Edit Department', 'text_domain'),
+				'view_item'         => __('View Department', 'text_domain'),
+				'update_item'       => __('Update Department', 'text_domain'),
+				'add_new_item'      => __('Add New Department', 'text_domain'),
+				'new_item_name'     => __('New Department Name', 'text_domain'),
+				'search_items'      => __('Search Departments', 'text_domain'),
+			),
+			'show_admin_column' => true,
+			'hierarchical'      => true,
+			'rewrite'           => array( 
+				'slug' => 'faculty-staff-departments',
+				'with_front' => false
+			),
+		)
+	);
     
     // Setup custom image size  
     add_image_size( 'nicholls-fs-medium', 240, 360 );
     add_image_size( 'nicholls-fs-thumb', 120, 180 );
+    
+	// Needs moved to activation after testing
+	flush_rewrite_rules( false );
     
 }  
 add_action('init', 'nicholls_fs_init');
@@ -217,12 +295,18 @@ function nicholls_fs_template_smart(){
           exit();
         }
 
+    } else if ( is_tax( 'n-faculty-staff-taxonomy' ) ) {
+
+        $template = locate_template( array( $archive_template_name ), true );
+        if(empty($template)) {
+          include( $fs_template_dir . '/' . $archive_template_name);
+          exit();
+        }
+            
     }
 
 }
 add_filter('template_redirect', 'nicholls_fs_template_smart');
-
-
 
 
 
@@ -251,12 +335,23 @@ function nicholls_fs_metaboxes( array $meta_boxes ) {
 				'desc'       => __( 'field description (optional)', 'cmb' ),
 				'id'         => $prefix . 'employee_title',
 				'type'       => 'text',
-				'show_on_cb' => 'cmb_test_text_show_on_cb', // function should return a bool value
+				// 'show_on_cb' => 'cmb_test_text_show_on_cb', // function should return a bool value
 				// 'sanitization_cb' => 'my_custom_sanitization', // custom sanitization callback parameter
 				// 'escape_cb'       => 'my_custom_escaping',  // custom escaping callback parameter
 				// 'on_front'        => false, // Optionally designate a field to wp-admin only
 				// 'repeatable'      => true,
 			),	
+			array(
+				'name'       => __( 'Employee Departmnet', 'cmb' ),
+				'desc'       => __( 'field description (optional)', 'cmb' ),
+				'id'         => $prefix . 'employee_dept',
+				'type'       => 'text',
+				// 'show_on_cb' => 'cmb_test_text_show_on_cb', // function should return a bool value
+				// 'sanitization_cb' => 'my_custom_sanitization', // custom sanitization callback parameter
+				// 'escape_cb'       => 'my_custom_escaping',  // custom escaping callback parameter
+				// 'on_front'        => false, // Optionally designate a field to wp-admin only
+				// 'repeatable'      => true,
+			),			
 			array(
 				'name' => __( 'Employee Email', 'cmb' ),
 				'desc' => __( 'field description (optional)', 'cmb' ),
@@ -375,7 +470,7 @@ function cmb_sample_metaboxes( array $meta_boxes ) {
 				'desc'       => __( 'field description (optional)', 'cmb' ),
 				'id'         => $prefix . 'test_text',
 				'type'       => 'text',
-				'show_on_cb' => 'cmb_test_text_show_on_cb', // function should return a bool value
+				// 'show_on_cb' => 'cmb_test_text_show_on_cb', // function should return a bool value to show
 				// 'sanitization_cb' => 'my_custom_sanitization', // custom sanitization callback parameter
 				// 'escape_cb'       => 'my_custom_escaping',  // custom escaping callback parameter
 				// 'on_front'        => false, // Optionally designate a field to wp-admin only
@@ -739,4 +834,84 @@ function cmb_sample_metaboxes( array $meta_boxes ) {
 	// Add other metaboxes as needed
 
 	return $meta_boxes;
+}
+
+
+/**
+* Display custom meta based on meta key
+*
+*/
+function nicholls_fs_display_meta_item( $meta_item = '', $return = false ) {
+
+	$meta_items = array(
+		'_nicholls_fs_employee_title' => array(
+			'name' => 'Title',
+			'class' => 'nicholls-fs-title'
+		),
+		'_nicholls_fs_employee_dept' => array(
+			'name' => 'Department',
+			'class' => 'nicholls-fs-dept'
+		),
+		'_nicholls_fs_employee_email' => array(
+			'name' => 'Email',
+			'class' => 'nicholls-fs-email'
+		),
+		'_nicholls_fs_phone' => array(
+			'name' => 'Phone',
+			'class' => 'nicholls-fs-phone'
+		),
+		'_nicholls_fs_office' => array(
+			'name' => 'Office Location',
+			'class' => 'nicholls-fs-office'
+		)
+	);
+
+	$meta_item_data = get_post_meta( get_the_ID(), $meta_item, true );
+	
+	if ( empty( $meta_item_data ) ) return;
+	
+	if ( $meta_item == '_nicholls_fs_employee_email' ) {
+		
+		$e_email = explode( '@', $meta_item_data );
+
+		$display .= '<div class="' . $meta_items[$meta_item]['class'] . '"><strong>' . $meta_items[$meta_item]['name'] . ':</strong> ';
+		
+		$display .= '<script type="text/javascript">' . "\n";
+		$display .= '//<![CDATA[' . "\n";
+		$display .= 'var n_u = "' . $e_email[0] . '";' . "\n";
+		$display .= 'var n_dd = "' . $e_email[1] . '";' . "\n";
+		$display .= 'var n_dot = "' . $employee_name . '";' . "\n";
+		$display .= '//]]>' . "\n";
+		$display .= '</script>' . "\n";
+				
+		$display .= '<script type="text/javascript">' . "\n";
+		$display .= '//<![CDATA[' . "\n";
+		$display .= '<!--' . "\n";
+		$display .= ' var u = "";' . "\n";
+		$display .= 'var d = "";' . "\n";
+		$display .= 'var cmd = "m"+""+"a";' . "\n";
+		$display .= 'var to = "t";' . "\n";
+			   
+		$display .= 'cmd = cmd + ""+""+"i";' . "\n";
+		$display .= 'to = to+"o:";' . "\n";
+		$display .= 'cmd = cmd +"l"+to;' . "\n";
+		$display .= 'loc = cmd+n_u;' . "\n";
+		$display .= 'loc = loc + "%40";' . "\n";
+		$display .= 'loc = loc + n_dd;' . "\n";
+		$display .= 'document.write("<a class=\"nicholls-fs-modal-email\" href=\""+loc+"\">"+n_u+"&#64;"+n_dd+"<\/a>");' . "\n";
+
+		$display .= '//-->' . "\n";
+		$display .= '//]]>' . "\n";
+		$display .= '</script>' . "\n";
+		
+		$display .= '</div>';		
+		
+	} else
+		$display = '<div class="' . $meta_items[$meta_item]['class'] . '"><strong>' . $meta_items[$meta_item]['name'] . ':</strong> ' . $meta_item_data . '</div>';
+	
+	if ( !$return )
+		echo $display;
+	else
+		return $display;
+
 }

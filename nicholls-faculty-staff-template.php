@@ -10,7 +10,8 @@ get_header();
 		<div id="container" class="container-">
 			<div id="content" class="content-" role="main">
 
-			<h2 class="entrytitle" id="post-<?php the_ID(); ?>"><a href="<?php the_permalink() ?>" rel="bookmark"><?php the_title(); ?></a></h2>
+
+			<h2 class="entry-title" id="post-<?php the_ID(); ?>"><a href="<?php the_permalink() ?>" rel="bookmark"><?php the_title(); ?></a></h2>
 
 			<?php if (have_posts()) : ?>
 			<?php while (have_posts()) : the_post(); ?>
@@ -22,10 +23,11 @@ get_header();
 			</div>
 			<div class="nicholls-fs-info">
 				<div class="nicholls-fs-name"><h2><?php the_title(); ?></h2></div>
-				<div class="nicholls-fs-title"><?php echo get_post_meta( get_the_ID(), '_nicholls_fs_employee_title', true ); ?></div>
-				<div class="nicholls-fs-email"><strong>Email:</strong> <a class="nicholls-fs-modal-email" href="mailto:<?php echo get_post_meta( get_the_ID(), '_nicholls_fs_employee_email', true ); ?>"><?php echo get_post_meta( get_the_ID(), '_nicholls_fs_employee_email', true ); ?></a></div>
-				<div class="nicholls-fs-phone"><strong>Phone:</strong> <?php echo get_post_meta( get_the_ID(), '_nicholls_fs_phone', true ); ?></div>
-				<div class="nicholls-fs-office"><strong>Office Location:</strong> <?php echo get_post_meta( get_the_ID(), '_nicholls_fs_office', true ); ?></div>
+				<?php nicholls_fs_display_meta_item( '_nicholls_fs_employee_title' ); ?>
+				<?php nicholls_fs_display_meta_item( '_nicholls_fs_employee_dept' ); ?>
+				<?php nicholls_fs_display_meta_item( '_nicholls_fs_employee_email' ); ?>
+				<?php nicholls_fs_display_meta_item( '_nicholls_fs_phone' ); ?>
+				<?php nicholls_fs_display_meta_item( '_nicholls_fs_office' ); ?>
 			</div>
 
 			<div class="nicholls-fs-bio">
