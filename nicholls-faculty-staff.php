@@ -922,3 +922,13 @@ function nicholls_fs_display_meta_item( $meta_item = '', $return = false ) {
 		return $display;
 
 }
+
+function nicholls_fs_archive_order( $vars ) {
+  if ( !is_admin() && isset( $vars['post_type'] ) && is_post_type_hierarchical($vars['post_type'] ) ) {
+    $vars['orderby'] = 'menu_order';
+    $vars['order'] = 'ASC';
+  }
+
+  return $vars;
+}
+add_filter( 'request', 'nicholls_fs_archive_order');
