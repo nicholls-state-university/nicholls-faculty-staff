@@ -8,6 +8,7 @@ Version: 0.5
 Author URI: http://nicholls.edu
 */
 
+add_action( 'init', 'cmb_initialize_cmb_meta_boxes', 9999 );
 /**
  * Initialize the metabox class.
  * https://github.com/WebDevStudios/Custom-Metaboxes-and-Fields-for-WordPress
@@ -20,14 +21,16 @@ if ( !function_exists( 'cmb_initialize_cmb_meta_boxe' ) ) {
 
 	}
 }
-add_action( 'init', 'cmb_initialize_cmb_meta_boxes', 9999 );
 
-
+add_filter('cmb_meta_box_url', 'nicholls_fs_url_filter');
+/**
+* Filter to use protocol independent URL for CMB tools
+*
+*/
 function nicholls_fs_url_filter( $c_url ) {
 	$c_url = str_replace( 'http://', '//', $c_url );
 	return $c_url;
 }
-add_filter('cmb_meta_box_url', 'nicholls_fs_url_filter');
 
 /**
 * Email contact form
@@ -60,7 +63,10 @@ function nicholls_fs_email_form() { ?>
 	</div>
 <?php } 
 
-
+/**
+* Custom function to get current URL when *_permalink won't work.
+*
+*/
 function nicholls_fs_get_url() {
 	  $url  = @( $_SERVER["HTTPS"] != 'on' ) ? 'http://'.$_SERVER["SERVER_NAME"] :  'https://'.$_SERVER["SERVER_NAME"];
 	  $url .= ( $_SERVER["SERVER_PORT"] !== 80 ) ? ":".$_SERVER["SERVER_PORT"] : "";
@@ -68,6 +74,7 @@ function nicholls_fs_get_url() {
 	  return $url;
 }
 
+add_action( 'wp_enqueue_scripts', 'nicholls_fs_js_enqueue' );
 /**
 * Email contact form - JavaScript
 *
@@ -89,8 +96,9 @@ function nicholls_fs_js_enqueue() {
 	);
 	wp_localize_script('nicholls-fs-js', 'nicholls_fs_js_obj', $localize);
 }
-add_action( 'wp_enqueue_scripts', 'nicholls_fs_js_enqueue' );
 
+add_action( 'wp_ajax_nicholls-fs-form-email', 'nicholls_fs_ajax_simple_contact_form' );
+add_action( 'wp_ajax_nopriv_nicholls-fs-form-email', 'nicholls_fs_ajax_simple_contact_form' );
 /**
 * Email contact form - Ajax actions
 *
@@ -122,13 +130,11 @@ function nicholls_fs_ajax_simple_contact_form() {
 
 	die(); // Important
 }
-add_action( 'wp_ajax_nicholls-fs-form-email', 'nicholls_fs_ajax_simple_contact_form' );
-add_action( 'wp_ajax_nopriv_nicholls-fs-form-email', 'nicholls_fs_ajax_simple_contact_form' );
 
+add_action( 'phpmailer_init', 'nicholls_fs_configure_smtp', 999 );
 /**
 * Configure SMTP & Advanced PHPMail options
 */
-add_action( 'phpmailer_init', 'nicholls_fs_configure_smtp', 999 );
 function nicholls_fs_configure_smtp( $phpmailer ){
 
     $phpmailer->From = 'nichweb@nicholls.edu';
@@ -157,6 +163,7 @@ function nicholls_fs_configure_smtp( $phpmailer ){
 	*/
 }
 
+add_action( 'wp_enqueue_scripts', 'nicholls_fs_resources_load', 11 );
 /**
 * Load resources when shortcode is detected. Only for CSS and Scripts since we're
 * running on wp_enqueue_script.
@@ -180,8 +187,8 @@ function nicholls_fs_resources_load() {
 		wp_enqueue_style( 'j-flex-style' );
 */
 }
-add_action( 'wp_enqueue_scripts', 'nicholls_fs_resources_load', 11 );
-  
+
+add_action('init', 'nicholls_fs_init');
 /**
 * Initialize and register custom post types
 */
@@ -254,9 +261,8 @@ function nicholls_fs_init() {
 	flush_rewrite_rules( false );
     
 }  
-add_action('init', 'nicholls_fs_init');
 
-
+add_action('save_post', 'nicholls_fs_save_meta', 1, 2); // save the custom fields
 /**
 * Save the Metabox Data
 */
@@ -272,9 +278,8 @@ function nicholls_fs_save_meta($post_id, $post) {
 	if ( isset( $_POST['_nicholls_fs_employee_photo_id'] ) && empty( $_POST['_nicholls_fs_employee_photo_id'] ) ) 
 		delete_post_meta( $post->ID, '_thumbnail_id' ); 
 }
-add_action('save_post', 'nicholls_fs_save_meta', 1, 2); // save the custom fields
 
-
+add_filter('template_redirect', 'nicholls_fs_template_smart');
 /*
 * Filter the single entry and archive templates with our custom function
 */
@@ -313,10 +318,8 @@ function nicholls_fs_template_smart(){
     }
 
 }
-add_filter('template_redirect', 'nicholls_fs_template_smart');
 
-
-
+add_filter( 'cmb_meta_boxes', 'nicholls_fs_metaboxes' );
 /**
  * Define the metabox and field configurations.
  *
@@ -443,406 +446,6 @@ function nicholls_fs_metaboxes( array $meta_boxes ) {
 
 	return $meta_boxes;
 }
-add_filter( 'cmb_meta_boxes', 'nicholls_fs_metaboxes' );
-
-
-
-
-add_filter( 'cmb_meta_boxes', 'cmb_sample_metaboxes' );
-/**
- * Define the metabox and field configurations.
- *
- * @param  array $meta_boxes
- * @return array
- */
-function cmb_sample_metaboxes( array $meta_boxes ) {
-
-	// Start with an underscore to hide fields from custom fields list
-	$prefix = '_cmb_';
-
-	/**
-	 * Sample metabox to demonstrate each field type included
-	 */
-	$meta_boxes['test_metabox'] = array(
-		'id'         => 'test_metabox',
-		'title'      => __( 'Test Metabox', 'cmb' ),
-		'pages'      => array( 'page', ), // Post type
-		'context'    => 'normal',
-		'priority'   => 'high',
-		'show_names' => true, // Show field names on the left
-		// 'cmb_styles' => true, // Enqueue the CMB stylesheet on the frontend
-		'fields'     => array(
-			array(
-				'name'       => __( 'Test Text', 'cmb' ),
-				'desc'       => __( 'field description (optional)', 'cmb' ),
-				'id'         => $prefix . 'test_text',
-				'type'       => 'text',
-				// 'show_on_cb' => 'cmb_test_text_show_on_cb', // function should return a bool value to show
-				// 'sanitization_cb' => 'my_custom_sanitization', // custom sanitization callback parameter
-				// 'escape_cb'       => 'my_custom_escaping',  // custom escaping callback parameter
-				// 'on_front'        => false, // Optionally designate a field to wp-admin only
-				// 'repeatable'      => true,
-			),
-			array(
-				'name' => __( 'Test Text Small', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'test_textsmall',
-				'type' => 'text_small',
-				// 'repeatable' => true,
-			),
-			array(
-				'name' => __( 'Test Text Medium', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'test_textmedium',
-				'type' => 'text_medium',
-				// 'repeatable' => true,
-			),
-			array(
-				'name' => __( 'Website URL', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'url',
-				'type' => 'text_url',
-				// 'protocols' => array('http', 'https', 'ftp', 'ftps', 'mailto', 'news', 'irc', 'gopher', 'nntp', 'feed', 'telnet'), // Array of allowed protocols
-				// 'repeatable' => true,
-			),
-			array(
-				'name' => __( 'Test Text Email', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'email',
-				'type' => 'text_email',
-				// 'repeatable' => true,
-			),
-			array(
-				'name' => __( 'Test Time', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'test_time',
-				'type' => 'text_time',
-			),
-			array(
-				'name' => __( 'Time zone', 'cmb' ),
-				'desc' => __( 'Time zone', 'cmb' ),
-				'id'   => $prefix . 'timezone',
-				'type' => 'select_timezone',
-			),
-			array(
-				'name' => __( 'Test Date Picker', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'test_textdate',
-				'type' => 'text_date',
-			),
-			array(
-				'name' => __( 'Test Date Picker (UNIX timestamp)', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'test_textdate_timestamp',
-				'type' => 'text_date_timestamp',
-				// 'timezone_meta_key' => $prefix . 'timezone', // Optionally make this field honor the timezone selected in the select_timezone specified above
-			),
-			array(
-				'name' => __( 'Test Date/Time Picker Combo (UNIX timestamp)', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'test_datetime_timestamp',
-				'type' => 'text_datetime_timestamp',
-			),
-			// This text_datetime_timestamp_timezone field type
-			// is only compatible with PHP versions 5.3 or above.
-			// Feel free to uncomment and use if your server meets the requirement
-			// array(
-			// 	'name' => __( 'Test Date/Time Picker/Time zone Combo (serialized DateTime object)', 'cmb' ),
-			// 	'desc' => __( 'field description (optional)', 'cmb' ),
-			// 	'id'   => $prefix . 'test_datetime_timestamp_timezone',
-			// 	'type' => 'text_datetime_timestamp_timezone',
-			// ),
-			array(
-				'name' => __( 'Test Money', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'test_textmoney',
-				'type' => 'text_money',
-				// 'before'     => '£', // override '$' symbol if needed
-				// 'repeatable' => true,
-			),
-			array(
-				'name'    => __( 'Test Color Picker', 'cmb' ),
-				'desc'    => __( 'field description (optional)', 'cmb' ),
-				'id'      => $prefix . 'test_colorpicker',
-				'type'    => 'colorpicker',
-				'default' => '#ffffff'
-			),
-			array(
-				'name' => __( 'Test Text Area', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'test_textarea',
-				'type' => 'textarea',
-			),
-			array(
-				'name' => __( 'Test Text Area Small', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'test_textareasmall',
-				'type' => 'textarea_small',
-			),
-			array(
-				'name' => __( 'Test Text Area for Code', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'test_textarea_code',
-				'type' => 'textarea_code',
-			),
-			array(
-				'name' => __( 'Test Title Weeeee', 'cmb' ),
-				'desc' => __( 'This is a title description', 'cmb' ),
-				'id'   => $prefix . 'test_title',
-				'type' => 'title',
-			),
-			array(
-				'name'    => __( 'Test Select', 'cmb' ),
-				'desc'    => __( 'field description (optional)', 'cmb' ),
-				'id'      => $prefix . 'test_select',
-				'type'    => 'select',
-				'options' => array(
-					'standard' => __( 'Option One', 'cmb' ),
-					'custom'   => __( 'Option Two', 'cmb' ),
-					'none'     => __( 'Option Three', 'cmb' ),
-				),
-			),
-			array(
-				'name'    => __( 'Test Radio inline', 'cmb' ),
-				'desc'    => __( 'field description (optional)', 'cmb' ),
-				'id'      => $prefix . 'test_radio_inline',
-				'type'    => 'radio_inline',
-				'options' => array(
-					'standard' => __( 'Option One', 'cmb' ),
-					'custom'   => __( 'Option Two', 'cmb' ),
-					'none'     => __( 'Option Three', 'cmb' ),
-				),
-			),
-			array(
-				'name'    => __( 'Test Radio', 'cmb' ),
-				'desc'    => __( 'field description (optional)', 'cmb' ),
-				'id'      => $prefix . 'test_radio',
-				'type'    => 'radio',
-				'options' => array(
-					'option1' => __( 'Option One', 'cmb' ),
-					'option2' => __( 'Option Two', 'cmb' ),
-					'option3' => __( 'Option Three', 'cmb' ),
-				),
-			),
-			array(
-				'name'     => __( 'Test Taxonomy Radio', 'cmb' ),
-				'desc'     => __( 'field description (optional)', 'cmb' ),
-				'id'       => $prefix . 'text_taxonomy_radio',
-				'type'     => 'taxonomy_radio',
-				'taxonomy' => 'category', // Taxonomy Slug
-				// 'inline'  => true, // Toggles display to inline
-			),
-			array(
-				'name'     => __( 'Test Taxonomy Select', 'cmb' ),
-				'desc'     => __( 'field description (optional)', 'cmb' ),
-				'id'       => $prefix . 'text_taxonomy_select',
-				'type'     => 'taxonomy_select',
-				'taxonomy' => 'category', // Taxonomy Slug
-			),
-			array(
-				'name'     => __( 'Test Taxonomy Multi Checkbox', 'cmb' ),
-				'desc'     => __( 'field description (optional)', 'cmb' ),
-				'id'       => $prefix . 'test_multitaxonomy',
-				'type'     => 'taxonomy_multicheck',
-				'taxonomy' => 'post_tag', // Taxonomy Slug
-				// 'inline'  => true, // Toggles display to inline
-			),
-			array(
-				'name' => __( 'Test Checkbox', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'test_checkbox',
-				'type' => 'checkbox',
-			),
-			array(
-				'name'    => __( 'Test Multi Checkbox', 'cmb' ),
-				'desc'    => __( 'field description (optional)', 'cmb' ),
-				'id'      => $prefix . 'test_multicheckbox',
-				'type'    => 'multicheck',
-				'options' => array(
-					'check1' => __( 'Check One', 'cmb' ),
-					'check2' => __( 'Check Two', 'cmb' ),
-					'check3' => __( 'Check Three', 'cmb' ),
-				),
-				// 'inline'  => true, // Toggles display to inline
-			),
-			array(
-				'name'    => __( 'Test wysiwyg', 'cmb' ),
-				'desc'    => __( 'field description (optional)', 'cmb' ),
-				'id'      => $prefix . 'test_wysiwyg',
-				'type'    => 'wysiwyg',
-				'options' => array( 'textarea_rows' => 5, ),
-			),
-			array(
-				'name' => __( 'Test Image', 'cmb' ),
-				'desc' => __( 'Upload an image or enter a URL.', 'cmb' ),
-				'id'   => $prefix . 'test_image',
-				'type' => 'file',
-			),
-			array(
-				'name'         => __( 'Multiple Files', 'cmb' ),
-				'desc'         => __( 'Upload or add multiple images/attachments.', 'cmb' ),
-				'id'           => $prefix . 'test_file_list',
-				'type'         => 'file_list',
-				'preview_size' => array( 100, 100 ), // Default: array( 50, 50 )
-			),
-			array(
-				'name' => __( 'oEmbed', 'cmb' ),
-				'desc' => __( 'Enter a youtube, twitter, or instagram URL. Supports services listed at <a href="http://codex.wordpress.org/Embeds">http://codex.wordpress.org/Embeds</a>.', 'cmb' ),
-				'id'   => $prefix . 'test_embed',
-				'type' => 'oembed',
-			),
-		),
-	);
-
-	/**
-	 * Metabox to be displayed on a single page ID
-	 */
-	$meta_boxes['about_page_metabox'] = array(
-		'id'         => 'about_page_metabox',
-		'title'      => __( 'About Page Metabox', 'cmb' ),
-		'pages'      => array( 'page', ), // Post type
-		'context'    => 'normal',
-		'priority'   => 'high',
-		'show_names' => true, // Show field names on the left
-		'show_on'    => array( 'key' => 'id', 'value' => array( 2, ), ), // Specific post IDs to display this metabox
-		'fields'     => array(
-			array(
-				'name' => __( 'Test Text', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . '_about_test_text',
-				'type' => 'text',
-			),
-		)
-	);
-
-	/**
-	 * Repeatable Field Groups
-	 */
-	$meta_boxes['field_group'] = array(
-		'id'         => 'field_group',
-		'title'      => __( 'Repeating Field Group', 'cmb' ),
-		'pages'      => array( 'page', ),
-		'fields'     => array(
-			array(
-				'id'          => $prefix . 'repeat_group',
-				'type'        => 'group',
-				'description' => __( 'Generates reusable form entries', 'cmb' ),
-				'options'     => array(
-					'group_title'   => __( 'Entry {#}', 'cmb' ), // {#} gets replaced by row number
-					'add_button'    => __( 'Add Another Entry', 'cmb' ),
-					'remove_button' => __( 'Remove Entry', 'cmb' ),
-					'sortable'      => true, // beta
-				),
-				// Fields array works the same, except id's only need to be unique for this group. Prefix is not needed.
-				'fields'      => array(
-					array(
-						'name' => 'Entry Title',
-						'id'   => 'title',
-						'type' => 'text',
-						// 'repeatable' => true, // Repeatable fields are supported w/in repeatable groups (for most types)
-					),
-					array(
-						'name' => 'Description',
-						'description' => 'Write a short description for this entry',
-						'id'   => 'description',
-						'type' => 'textarea_small',
-					),
-					array(
-						'name' => 'Entry Image',
-						'id'   => 'image',
-						'type' => 'file',
-					),
-					array(
-						'name' => 'Image Caption',
-						'id'   => 'image_caption',
-						'type' => 'text',
-					),
-				),
-			),
-		),
-	);
-
-	/**
-	 * Metabox for the user profile screen
-	 */
-	$meta_boxes['user_edit'] = array(
-		'id'         => 'user_edit',
-		'title'      => __( 'User Profile Metabox', 'cmb' ),
-		'pages'      => array( 'user' ), // Tells CMB to use user_meta vs post_meta
-		'show_names' => true,
-		'cmb_styles' => false, // Show cmb bundled styles.. not needed on user profile page
-		'fields'     => array(
-			array(
-				'name'     => __( 'Extra Info', 'cmb' ),
-				'desc'     => __( 'field description (optional)', 'cmb' ),
-				'id'       => $prefix . 'exta_info',
-				'type'     => 'title',
-				'on_front' => false,
-			),
-			array(
-				'name'    => __( 'Avatar', 'cmb' ),
-				'desc'    => __( 'field description (optional)', 'cmb' ),
-				'id'      => $prefix . 'avatar',
-				'type'    => 'file',
-				'save_id' => true,
-			),
-			array(
-				'name' => __( 'Facebook URL', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'facebookurl',
-				'type' => 'text_url',
-			),
-			array(
-				'name' => __( 'Twitter URL', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'twitterurl',
-				'type' => 'text_url',
-			),
-			array(
-				'name' => __( 'Google+ URL', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'googleplusurl',
-				'type' => 'text_url',
-			),
-			array(
-				'name' => __( 'Linkedin URL', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'linkedinurl',
-				'type' => 'text_url',
-			),
-			array(
-				'name' => __( 'User Field', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'user_text_field',
-				'type' => 'text',
-			),
-		)
-	);
-
-	/**
-	 * Metabox for an options page. Will not be added automatically, but needs to be called with
-	 * the `cmb_metabox_form` helper function. See wiki for more info.
-	 */
-	$meta_boxes['options_page'] = array(
-		'id'      => 'options_page',
-		'title'   => __( 'Theme Options Metabox', 'cmb' ),
-		'show_on' => array( 'key' => 'options-page', 'value' => array( $prefix . 'theme_options', ), ),
-		'fields'  => array(
-			array(
-				'name'    => __( 'Site Background Color', 'cmb' ),
-				'desc'    => __( 'field description (optional)', 'cmb' ),
-				'id'      => $prefix . 'bg_color',
-				'type'    => 'colorpicker',
-				'default' => '#ffffff'
-			),
-		)
-	);
-
-	// Add other metaboxes as needed
-
-	return $meta_boxes;
-}
-
 
 /**
 * Display custom meta based on meta key
@@ -923,12 +526,16 @@ function nicholls_fs_display_meta_item( $meta_item = '', $return = false ) {
 
 }
 
+add_filter( 'request', 'nicholls_fs_archive_order');
+/**
+* Email contact form - Ajax actions
+*
+*/
 function nicholls_fs_archive_order( $vars ) {
-  if ( !is_admin() && isset( $vars['post_type'] ) && is_post_type_hierarchical($vars['post_type'] ) ) {
+  if ( !is_admin() && isset( $vars['post_type'] ) && $vars['post_type'] == 'n-faculty-staff' ) {
     $vars['orderby'] = 'menu_order';
     $vars['order'] = 'ASC';
   }
 
   return $vars;
 }
-add_filter( 'request', 'nicholls_fs_archive_order');
