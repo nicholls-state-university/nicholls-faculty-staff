@@ -114,14 +114,18 @@ function nicholls_fs_filter_resize_dimensions( $payload, $orig_w, $orig_h, $dest
 		$crop_w = round( $new_w / $size_ratio );
 		$crop_h = round( $new_h / $size_ratio );
  
-		$s_x = 0; // [[ formerly ]] ==> floor( ($orig_w - $crop_w) / 2 );
+		//$s_x = 0; // [[ formerly ]] ==> floor( ($orig_w - $crop_w) / 2 );
+		// Use former method to center width crop
+		$s_x = floor( ($orig_w - $crop_w) / 2 );
 		$s_y = 0; // [[ formerly ]] ==> floor( ($orig_h - $crop_h) / 2 );
 	} else {
 		// don't crop, just resize using $dest_w x $dest_h as a maximum bounding box
 		$crop_w = $orig_w;
 		$crop_h = $orig_h;
  
-		$s_x = 0;
+		//$s_x = 0;
+        // Use former method to center width crop
+		$s_x = floor( ($orig_w - $crop_w) / 2 );		
 		$s_y = 0;
  
 		list( $new_w, $new_h ) = wp_constrain_dimensions( $orig_w, $orig_h, $dest_w, $dest_h );
