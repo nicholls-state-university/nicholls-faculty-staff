@@ -438,7 +438,7 @@ function nicholls_fs_metaboxes( array $meta_boxes ) {
 			),
 			array(
 				'name' => __( 'Employee Phone Number', 'cmb' ),
-				'desc' => __( 'Please input full number with area code (xxx)xxx-xxxx', 'cmb' ),
+				'desc' => __( 'Please input full phone number with area code xxx.xxx.xxxx', 'cmb' ),
 				'id'   => $prefix . 'phone',
 				'type' => 'text',
 				// 'repeatable' => true,
