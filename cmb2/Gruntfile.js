@@ -5,7 +5,7 @@ module.exports = function(grunt) {
 
 	grunt.initConfig({
 
-		pkg: grunt.file.readJSON('package.json'),
+		pkg: grunt.file.readJSON( 'package.json' ),
 
 		phpunit: {
 			classes: {}
@@ -13,10 +13,54 @@ module.exports = function(grunt) {
 
 		githooks: {
 			all: {
-				'pre-commit': 'default'
+				'pre-commit': 'tests'
 			}
 		},
 
+		dirs: {
+			lang: 'languages'
+		},
+
+		makepot: {
+			target: {
+				options: {
+					domainPath: 'languages/',
+					potComments: '',
+					potFilename: 'cmb2.pot',
+					type: 'wp-plugin',
+					updateTimestamp: true,
+					potHeaders: {
+						poedit: true,
+						'language': 'en_US',
+						'x-poedit-keywordslist': true
+					},
+					processPot: function( pot, options ) {
+						pot.headers['report-msgid-bugs-to'] = 'http://wordpress.org/support/plugin/cmb2';
+						pot.headers['last-translator'] = 'WebDevStudios contact@webdevstudios.com';
+						pot.headers['language-team'] = 'WebDevStudios contact@webdevstudios.com';
+						var today = new Date();
+						pot.headers['po-revision-date'] = today.getFullYear() +'-'+ ( today.getMonth() + 1 ) +'-'+ today.getDate() +' '+ today.getUTCHours() +':'+ today.getUTCMinutes() +'+'+ today.getTimezoneOffset();
+						return pot;
+					}
+				}
+			}
+		},
+
+		potomo: {
+			dist: {
+				options: {
+					poDel: false
+				},
+				files: [{
+					expand: true,
+					cwd: '<%= dirs.lang %>/',
+					src: ['*.po'],
+					dest: '<%= dirs.lang %>/',
+					ext: '.mo',
+					nonull: true
+				}]
+			}
+		},
 		// concat: {
 		// 	options: {
 		// 		stripBanners: true,
@@ -36,9 +80,9 @@ module.exports = function(grunt) {
 		csscomb: {
 			dist: {
 				files: [{
-					expand: true,
+					expand: false,
 					cwd: 'css/',
-					src: ['**/*.css'],
+					src: ['css/cmb2.css'],
 					dest: 'css/',
 				}]
 			}
@@ -103,7 +147,7 @@ module.exports = function(grunt) {
 					exports : true,
 					module  : false
 				},
-				predef  :['document','window','jQuery','cmb2_l10','wp','tinyMCEPreInit','tinyMCE','console']
+				predef  :['document','window','jQuery','cmb2_l10','wp','tinyMCEPreInit','tinyMCE','console','postboxes','pagenow']
 			}
 		},
 
@@ -149,7 +193,13 @@ module.exports = function(grunt) {
 				options: {
 					debounceDelay: 500
 				}
+			},
+
+			other: {
+				files: [ '*.php', '**/*.php', '!node_modules/**', '!tests/**' ],
+				tasks: [ 'makepot' ]
 			}
+
 		},
 
 		// make a zipfile
@@ -179,7 +229,7 @@ module.exports = function(grunt) {
 
 	});
 
-	grunt.registerTask('styles', ['sass', 'cmq', 'csscomb', 'cssmin']);
+	grunt.registerTask('styles', ['sass', 'csscomb', 'cmq', 'cssmin']);
 	grunt.registerTask('js', ['asciify', 'jshint', 'uglify']);
 	grunt.registerTask('tests', ['asciify', 'jshint', 'phpunit']);
 	grunt.registerTask('default', ['styles', 'js', 'tests']);
