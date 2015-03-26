@@ -1,11 +1,8 @@
 /**
  * Controls the behaviours of custom metabox fields.
  *
- * @author Andrew Norcross
- * @author Jared Atchison
- * @author Bill Erickson
- * @author Justin Sternberg
- * @see    https://github.com/webdevstudios/Custom-Metaboxes-and-Fields-for-WordPress
+ * @author WebDevStudios
+ * @see    https://github.com/WebDevStudios/CMB2
  */
 
 /**
@@ -20,16 +17,23 @@ window.CMB2 = (function(window, document, $, undefined){
 
 	// CMB functionality object
 	var cmb = {
-		formfield          : '',
-		idNumber           : false,
-		file_frames        : {},
-		repeatEls          : 'input:not([type="button"]),select,textarea,.cmb2-media-status',
-		defaults : {
-			timePicker  : l10n.defaults.time_picker,
-			datePicker  : l10n.defaults.date_picker,
-			colorPicker : l10n.defaults.color_picker || {},
-		},
+		formfield       : '',
+		idNumber        : false,
+		file_frames     : {},
+		repeatEls       : 'input:not([type="button"]),select,textarea,.cmb2-media-status',
 		styleBreakPoint : 450,
+		mediaHandlers   : {},
+		neweditor_id    : [],
+		defaults : {
+			time_picker  : l10n.defaults.time_picker,
+			date_picker  : l10n.defaults.date_picker,
+			color_picker : l10n.defaults.color_picker || {},
+		},
+	};
+
+	// Because it's a more efficient way of getting an element by id.
+	var $id = function( selector ) {
+		return $( document.getElementById( selector ) );
 	};
 
 	cmb.metabox = function() {
@@ -42,13 +46,9 @@ window.CMB2 = (function(window, document, $, undefined){
 
 	cmb.init = function() {
 
-		var $metabox = cmb.metabox();
+		cmb.log( 'CMB2 localized data', l10n );
+		var $metabox     = cmb.metabox();
 		var $repeatGroup = $metabox.find('.cmb-repeatable-group');
-
-		// hide our spinner gif if we're on a MP6 dashboard
-		if ( l10n.new_admin_style ) {
-			$metabox.find('.cmb-spinner img').hide();
-		}
 
 		/**
 		 * Initialize time/date/color pickers
@@ -56,7 +56,7 @@ window.CMB2 = (function(window, document, $, undefined){
 		cmb.initPickers( $metabox.find('input[type="text"].cmb2-timepicker'), $metabox.find('input[type="text"].cmb2-datepicker'), $metabox.find('input[type="text"].cmb2-colorpicker') );
 
 		// Wrap date picker in class to narrow the scope of jQuery UI CSS and prevent conflicts
-		$("#ui-datepicker-div").wrap('<div class="cmb2-element" />');
+		$id( 'ui-datepicker-div' ).wrap('<div class="cmb2-element" />');
 
 		// Insert toggle button into DOM wherever there is multicheck. credit: Genesis Framework
 		$( '<p><span class="button cmb-multicheck-toggle">' + l10n.strings.check_toggle + '</span></p>' ).insertBefore( '.cmb2-checkbox-list:not(.no-select-all)' );
@@ -67,11 +67,12 @@ window.CMB2 = (function(window, document, $, undefined){
 		$metabox
 			.on( 'change', '.cmb2_upload_file', function() {
 				cmb.formfield = $(this).attr('id');
-				$('#' + cmb.formfield + '_id').val('');
+				$id( cmb.formfield + '_id' ).val('');
 			})
 			// Media/file management
 			.on( 'click', '.cmb-multicheck-toggle', cmb.toggleCheckBoxes )
 			.on( 'click', '.cmb2-upload-button', cmb.handleMedia )
+			.on( 'click', '.cmb-attach-list li, .cmb2-media-status .img-status img, .cmb2-media-status .file-status > span', cmb.handleFileClick )
 			.on( 'click', '.cmb2-remove-file-button', cmb.handleRemoveMedia )
 			// Repeatable content
 			.on( 'click', '.cmb-add-group-row', cmb.addGroupRow )
@@ -81,13 +82,14 @@ window.CMB2 = (function(window, document, $, undefined){
 			// Ajax oEmbed display
 			.on( 'keyup paste focusout', '.cmb2-oembed', cmb.maybeOembed )
 			// Reset titles when removing a row
-			.on( 'cmb2_remove_row', '.cmb-repeatable-group', cmb.resetTitlesAndIterator );
+			.on( 'cmb2_remove_row', '.cmb-repeatable-group', cmb.resetTitlesAndIterator )
+			.on( 'click', '.cmbhandle, .cmbhandle + .cmbhandle-title', cmb.toggleHandle );
 
 		if ( $repeatGroup.length ) {
 			$repeatGroup
 				.filter('.sortable').each( function() {
 					// Add sorting arrows
-					$(this).find( '.cmb-remove-group-row' ).before( '<a class="button cmb-shift-rows move-up alignleft" href="#"><span class="'+ l10n.up_arrow_class +'"></span></a> <a class="button cmb-shift-rows move-down alignleft" href="#"><span class="'+ l10n.down_arrow_class +'"></span></a>' );
+					$(this).find( '.button.cmb-remove-group-row' ).before( '<a class="button cmb-shift-rows move-up alignleft" href="#"><span class="'+ l10n.up_arrow_class +'"></span></a> <a class="button cmb-shift-rows move-down alignleft" href="#"><span class="'+ l10n.down_arrow_class +'"></span></a>' );
 				})
 				.on( 'click', '.cmb-shift-rows', cmb.shiftRows )
 				.on( 'cmb2_add_row', cmb.emptyValue );
@@ -115,10 +117,15 @@ window.CMB2 = (function(window, document, $, undefined){
 		});
 	};
 
-	cmb.toggleCheckBoxes = function( event ) {
-		event.preventDefault();
+	cmb.toggleHandle = function( evt ) {
+		evt.preventDefault();
+		$(document).trigger( 'postbox-toggled', $(this).parent('.postbox').toggleClass('closed') );
+	};
+
+	cmb.toggleCheckBoxes = function( evt ) {
+		evt.preventDefault();
 		var $self = $(this);
-		var $multicheck = $self.parents( '.cmb-td' ).find( 'input[type=checkbox]' );
+		var $multicheck = $self.closest( '.cmb-td' ).find( 'input[type=checkbox]' );
 
 		// If the button has already been clicked once...
 		if ( $self.data( 'checked' ) ) {
@@ -133,31 +140,51 @@ window.CMB2 = (function(window, document, $, undefined){
 		}
 	};
 
-	cmb.handleMedia = function(event) {
+	cmb.handleMedia = function( evt ) {
+		evt.preventDefault();
 
+		var $el = $( this );
+		cmb.attach_id = ! $el.hasClass( 'cmb2-upload-list' ) ? $el.closest( '.cmb-td' ).find( '.cmb2-upload-file-id' ).val() : false;
+		// Clean up default 0 value
+		cmb.attach_id = '0' !== cmb.attach_id ? cmb.attach_id : false;
+
+		cmb._handleMedia( $el.prev('input.cmb2-upload-file').attr('id'), $el.hasClass( 'cmb2-upload-list' ) );
+	};
+
+	cmb.handleFileClick = function( evt ) {
+		evt.preventDefault();
+
+		var $el    = $( this );
+		var $td    = $el.closest( '.cmb-td' );
+		var isList = $td.find( '.cmb2-upload-button' ).hasClass( 'cmb2-upload-list' );
+		cmb.attach_id = isList ? $el.find( 'input[type="hidden"]' ).data( 'id' ) : $td.find( '.cmb2-upload-file-id' ).val();
+
+		if ( cmb.attach_id ) {
+			cmb._handleMedia( $td.find( 'input.cmb2-upload-file' ).attr('id'), isList, cmb.attach_id );
+		}
+	};
+
+	cmb._handleMedia = function( formfield, isList ) {
 		if ( ! wp ) {
 			return;
 		}
 
-		event.preventDefault();
-
 		var $metabox     = cmb.metabox();
-		var $self        = $(this);
-		cmb.formfield    = $self.prev('input').attr('id');
-		var $formfield   = $('#'+cmb.formfield);
+		cmb.formfield    = formfield;
+		var $formfield   = $id( cmb.formfield );
+		var previewSize  = $formfield.data( 'previewsize' );
 		var formName     = $formfield.attr('name');
 		var uploadStatus = true;
 		var attachment   = true;
-		var isList       = $self.hasClass( 'cmb2-upload-list' );
 
 		// If this field's media frame already exists, reopen it.
 		if ( cmb.formfield in cmb.file_frames ) {
-			cmb.file_frames[cmb.formfield].open();
+			cmb.file_frames[ cmb.formfield ].open();
 			return;
 		}
 
 		// Create the media frame.
-		cmb.file_frames[cmb.formfield] = wp.media.frames.file_frame = wp.media({
+		cmb.file_frames[ cmb.formfield ] = wp.media({
 			title: $metabox.find('label[for=' + cmb.formfield + ']').text(),
 			button: {
 				text: l10n.strings.upload_file
@@ -165,140 +192,159 @@ window.CMB2 = (function(window, document, $, undefined){
 			multiple: isList ? true : false
 		});
 
-		var handlers = {
-			list : function( selection ) {
-				// Get all of our selected files
-				attachment = selection.toJSON();
+		cmb.mediaHandlers.list = function( selection, returnIt ) {
+			// Get all of our selected files
+			attachment = selection.toJSON();
 
-				$formfield.val(attachment.url);
-				$('#'+ cmb.formfield +'_id').val(attachment.id);
+			$formfield.val(attachment.url);
+			$id( cmb.formfield +'_id' ).val(attachment.id);
 
-				// Setup our fileGroup array
-				var fileGroup = [];
+			// Setup our fileGroup array
+			var fileGroup = [];
 
-				// Loop through each attachment
-				$( attachment ).each( function() {
-					if ( this.type && this.type === 'image' ) {
-						// image preview
-						uploadStatus = '<li class="img-status">'+
-							'<img width="50" height="50" src="' + this.url + '" class="attachment-50x50" alt="'+ this.filename +'">'+
-							'<p><a href="#" class="cmb2-remove-file-button" rel="'+ cmb.formfield +'['+ this.id +']">'+ l10n.strings.remove_image +'</a></p>'+
-							'<input type="hidden" id="filelist-'+ this.id +'" name="'+ formName +'['+ this.id +']" value="' + this.url + '">'+
-						'</li>';
+			// Loop through each attachment
+			$( attachment ).each( function() {
+				if ( this.type && this.type === 'image' ) {
+					var width = previewSize[0] ? previewSize[0] : 50;
+					var height = previewSize[1] ? previewSize[1] : 50;
 
-					} else {
-						// Standard generic output if it's not an image.
-						uploadStatus = '<li>'+ l10n.strings.file +' <strong>'+ this.filename +'</strong>&nbsp;&nbsp;&nbsp; (<a href="' + this.url + '" target="_blank" rel="external">'+ l10n.strings.download +'</a> / <a href="#" class="cmb2-remove-file-button" rel="'+ cmb.formfield +'['+ this.id +']">'+ l10n.strings.remove_file +'</a>)'+
-							'<input type="hidden" id="filelist-'+ this.id +'" name="'+ formName +'['+ this.id +']" value="' + this.url + '">'+
-						'</li>';
+					// image preview
+					uploadStatus = '<li class="img-status">'+
+						'<img width="'+ width +'" height="'+ height +'" src="' + this.url + '" class="attachment-'+ width +'px'+ height +'px" alt="'+ this.filename +'">'+
+						'<p><a href="#" class="cmb2-remove-file-button" rel="'+ cmb.formfield +'['+ this.id +']">'+ l10n.strings.remove_image +'</a></p>'+
+						'<input type="hidden" id="filelist-'+ this.id +'" data-id="'+ this.id +'" name="'+ formName +'['+ this.id +']" value="' + this.url + '">'+
+					'</li>';
 
-					}
+				} else {
+					// Standard generic output if it's not an image.
+					uploadStatus = '<li class="file-status"><span>'+ l10n.strings.file +' <strong>'+ this.filename +'</strong></span>&nbsp;&nbsp; (<a href="' + this.url + '" target="_blank" rel="external">'+ l10n.strings.download +'</a> / <a href="#" class="cmb2-remove-file-button" rel="'+ cmb.formfield +'['+ this.id +']">'+ l10n.strings.remove_file +'</a>)'+
+						'<input type="hidden" id="filelist-'+ this.id +'" data-id="'+ this.id +'" name="'+ formName +'['+ this.id +']" value="' + this.url + '">'+
+					'</li>';
 
-					// Add our file to our fileGroup array
-					fileGroup.push( uploadStatus );
-				});
+				}
 
+				// Add our file to our fileGroup array
+				fileGroup.push( uploadStatus );
+			});
+
+			if ( ! returnIt ) {
 				// Append each item from our fileGroup array to .cmb2-media-status
 				$( fileGroup ).each( function() {
 					$formfield.siblings('.cmb2-media-status').slideDown().append(this);
 				});
-			},
-			single : function( selection ) {
-				// Only get one file from the uploader
-				attachment = selection.first().toJSON();
-
-				$formfield.val(attachment.url);
-				$('#'+ cmb.formfield +'_id').val(attachment.id);
-
-				if ( attachment.type && attachment.type === 'image' ) {
-					// image preview
-					uploadStatus = '<div class="img-status"><img style="max-width: 350px; width: 100%; height: auto;" src="' + attachment.url + '" alt="'+ attachment.filename +'" title="'+ attachment.filename +'" /><p><a href="#" class="cmb2-remove-file-button" rel="' + cmb.formfield + '">'+ l10n.strings.remove_image +'</a></p></div>';
-				} else {
-					// Standard generic output if it's not an image.
-					uploadStatus = l10n.strings.file +' <strong>'+ attachment.filename +'</strong>&nbsp;&nbsp;&nbsp; (<a href="'+ attachment.url +'" target="_blank" rel="external">'+ l10n.strings.download +'</a> / <a href="#" class="cmb2-remove-file-button" rel="'+ cmb.formfield +'">'+ l10n.strings.remove_file +'</a>)';
-				}
-
-				// add/display our output
-				$formfield.siblings('.cmb2-media-status').slideDown().html(uploadStatus);
+			} else {
+				return fileGroup;
 			}
+
+		};
+		cmb.mediaHandlers.single = function( selection ) {
+			// Only get one file from the uploader
+			attachment = selection.first().toJSON();
+
+			$formfield.val(attachment.url);
+			$id( cmb.formfield +'_id' ).val(attachment.id);
+
+			if ( attachment.type && attachment.type === 'image' ) {
+				// image preview
+				var width = previewSize[0] ? previewSize[0] : 350;
+				uploadStatus = '<div class="img-status"><img width="'+ width +'px" style="max-width: '+ width +'px; width: 100%; height: auto;" src="' + attachment.url + '" alt="'+ attachment.filename +'" title="'+ attachment.filename +'" /><p><a href="#" class="cmb2-remove-file-button" rel="' + cmb.formfield + '">'+ l10n.strings.remove_image +'</a></p></div>';
+			} else {
+				// Standard generic output if it's not an image.
+				uploadStatus = '<div class="file-status"><span>'+ l10n.strings.file +' <strong>'+ attachment.filename +'</strong></span>&nbsp;&nbsp; (<a href="'+ attachment.url +'" target="_blank" rel="external">'+ l10n.strings.download +'</a> / <a href="#" class="cmb2-remove-file-button" rel="'+ cmb.formfield +'">'+ l10n.strings.remove_file +'</a>)</div>';
+			}
+
+			// add/display our output
+			$formfield.siblings('.cmb2-media-status').slideDown().html(uploadStatus);
 		};
 
-		// When an file is selected, run a callback.
-		cmb.file_frames[cmb.formfield].on( 'select', function() {
-			var selection = cmb.file_frames[cmb.formfield].state().get('selection');
+		cmb.mediaHandlers.selectFile = function() {
+			var selection = cmb.file_frames[ cmb.formfield ].state().get('selection');
 			var type = isList ? 'list' : 'single';
-			handlers[type]( selection );
-		});
+
+			if ( cmb.attach_id && isList ) {
+				$( '[data-id="'+ cmb.attach_id +'"]' ).parents( 'li' ).replaceWith( cmb.mediaHandlers.list( selection, true ) );
+				return;
+			}
+
+			cmb.mediaHandlers[type]( selection );
+		};
+
+		cmb.mediaHandlers.openModal = function() {
+			var selection = cmb.file_frames[ cmb.formfield ].state().get('selection');
+
+			if ( ! cmb.attach_id ) {
+				return selection.reset();
+			}
+
+			var attach = wp.media.attachment( cmb.attach_id );
+			attach.fetch();
+			selection.set( attach ? [ attach ] : [] );
+		};
+
+		// When a file is selected, run a callback.
+		cmb.file_frames[ cmb.formfield ]
+			.on( 'select', cmb.mediaHandlers.selectFile )
+			.on( 'open', cmb.mediaHandlers.openModal );
 
 		// Finally, open the modal
-		cmb.file_frames[cmb.formfield].open();
+		cmb.file_frames[ cmb.formfield ].open();
 	};
 
-	cmb.handleRemoveMedia = function( event ) {
-		event.preventDefault();
+	cmb.handleRemoveMedia = function( evt ) {
+		evt.preventDefault();
 		var $self = $(this);
 		if ( $self.is( '.cmb-attach-list .cmb2-remove-file-button' ) ){
 			$self.parents('li').remove();
 			return false;
 		}
-		cmb.formfield    = $self.attr('rel');
-		var $container   = $self.parents('.img-status');
 
-		cmb.metabox().find('input#' + cmb.formfield).val('');
-		cmb.metabox().find('input#' + cmb.formfield + '_id').val('');
-		if ( ! $container.length ) {
-			$self.parents('.cmb2-media-status').html('');
-		} else {
-			$container.html('');
-		}
+		cmb.formfield = $self.attr('rel');
+
+		cmb.metabox().find( 'input#' + cmb.formfield ).val('');
+		cmb.metabox().find( 'input#' + cmb.formfield + '_id' ).val('');
+		$self.parents('.cmb2-media-status').html('');
+
 		return false;
 	};
 
-	// src: http://www.benalman.com/projects/jquery-replacetext-plugin/
-	$.fn.replaceText = function(b, a, c) {
-		return this.each(function() {
-			var f = this.firstChild, g, e, d = [];
-			if (f) {
-				do {
-					if (f.nodeType === 3) {
-						g = f.nodeValue;
-						e = g.replace(b, a);
-						if (e !== g) {
-							if (!c && /</.test(e)) {
-								$(f).before(e);
-								d.push(f);
-							} else {
-								f.nodeValue = e;
-							}
-						}
-					}
-				} while (f = f.nextSibling);
-			}
-			if ( d.length ) { $(d).remove(); }
-		});
-	};
+	cmb.cleanRow = function( $row, prevNum, group ) {
 
-	$.fn.cleanRow = function( prevNum, group ) {
-		var $self = $(this);
-		var $inputs = $self.find('input:not([type="button"]), select, textarea, label');
+		var $inputs = $row.find( 'input:not([type="button"]), select, textarea, label' );
+		var $other  = $row.find('[id]').not( 'input:not([type="button"]), select, textarea, label' );
 		if ( group ) {
 			// Remove extra ajaxed rows
-			$self.find('.cmb-repeat-table .cmb-repeat-row:not(:first-child)').remove();
+			$row.find('.cmb-repeat-table .cmb-repeat-row:not(:first-child)').remove();
+
+			// Update all elements w/ an ID
+			if ( $other.length ) {
+				$other.each( function() {
+					var $_this = $( this );
+					var oldID = $_this.attr( 'id' );
+					var newID = oldID.replace( '_'+ prevNum, '_'+ cmb.idNumber );
+					var $buttons = $row.find('[data-selector="'+ oldID +'"]');
+					$_this.attr( 'id', newID );
+
+					// Replace data-selector vars
+					if ( $buttons.length ) {
+						$buttons.attr( 'data-selector', newID ).data( 'selector', newID );
+					}
+				});
+			}
 		}
 		cmb.neweditor_id = [];
 
-		$inputs.filter(':checked').removeAttr( 'checked' );
-		$inputs.filter(':selected').removeAttr( 'selected' );
+		$inputs.filter(':checked').prop( 'checked', false );
+		$inputs.filter(':selected').prop( 'selected', false );
 
-		if ( $self.find('.cmb-group-title').length ) {
-			$self.find( '.cmb-group-title h4' ).text( $self.data( 'title' ).replace( '{#}', ( cmb.idNumber + 1 ) ) );
+		if ( $row.find('h3.cmb-group-title').length ) {
+			$row.find( 'h3.cmb-group-title' ).text( $row.data( 'title' ).replace( '{#}', ( cmb.idNumber + 1 ) ) );
 		}
 
 		$inputs.each( function(){
 			var $newInput = $(this);
 			var isEditor  = $newInput.hasClass( 'wp-editor-area' );
 			var oldFor    = $newInput.attr( 'for' );
-			// var $next     = $newInput.next();
+			// var $next  = $newInput.next();
 			var attrs     = {};
 			var newID, oldID;
 			if ( oldFor ) {
@@ -338,14 +384,13 @@ window.CMB2 = (function(window, document, $, undefined){
 				// Save ids for later to re-init tinymce
 				cmb.neweditor_id.push( { 'id': newID, 'old': oldID } );
 			}
-
 		});
 
-		return this;
+		return cmb;
 	};
 
-	$.fn.newRowHousekeeping = function() {
-		var $row         = $(this);
+	cmb.newRowHousekeeping = function( $row ) {
+
 		var $colorPicker = $row.find( '.wp-picker-container' );
 		var $list        = $row.find( '.cmb2-media-status' );
 
@@ -362,20 +407,10 @@ window.CMB2 = (function(window, document, $, undefined){
 			$list.empty();
 		}
 
-		return this;
+		return cmb;
 	};
 
-	cmb.afterRowInsert = function( $row, group ) {
-		var $focus = $row.find('input:not([type="button"]), textarea, select').first();
-		if ( $focus.length ) {
-			if ( group ) {
-				$('html, body').animate({
-					scrollTop: Math.round( $focus.offset().top - 150 )
-				}, 1000);
-			}
-			$focus.focus();
-		}
-
+	cmb.afterRowInsert = function( $row ) {
 		var _prop;
 
 		// Need to re-init wp_editor instances
@@ -436,86 +471,102 @@ window.CMB2 = (function(window, document, $, undefined){
 
 	};
 
-	cmb.emptyValue = function( event, row ) {
+	cmb.emptyValue = function( evt, row ) {
 		$('input:not([type="button"]), textarea', row).val('');
 	};
 
-	cmb.addGroupRow = function( event ) {
-
-		event.preventDefault();
+	cmb.addGroupRow = function( evt ) {
+		evt.preventDefault();
 
 		var $self    = $(this);
-		var $table   = $('#'+ $self.data('selector'));
+
+		// before anything significant happens
+		$self.trigger( 'cmb2_add_group_row_start', $self );
+
+		var $table   = $id( $self.data('selector') );
 		var $oldRow  = $table.find('.cmb-repeatable-grouping').last();
 		var prevNum  = parseInt( $oldRow.data('iterator') );
 		cmb.idNumber = prevNum + 1;
 		var $row     = $oldRow.clone();
 
-		$row.data( 'title', $self.data( 'grouptitle' ) ).newRowHousekeeping().cleanRow( prevNum, true );
+		cmb.newRowHousekeeping( $row.data( 'title', $self.data( 'grouptitle' ) ) ).cleanRow( $row, prevNum, true );
+		$row.find( '.cmb-add-row-button' ).prop( 'disabled', false );
 
-		var $newRow = $( '<div class="cmb-row cmb-repeatable-grouping" data-iterator="'+ cmb.idNumber +'">'+ $row.html() +'</div>' );
+		var $newRow = $( '<div class="postbox cmb-row cmb-repeatable-grouping" data-iterator="'+ cmb.idNumber +'">'+ $row.html() +'</div>' );
 		$oldRow.after( $newRow );
 
-		cmb.afterRowInsert( $newRow, true );
+		cmb.afterRowInsert( $newRow );
 
-		if ( $table.find('.cmb-repeatable-grouping').length <= 1  ) {
-			$table.find('.cmb-remove-group-row').attr( 'disabled', 'disabled' );
+		if ( $table.find('.cmb-repeatable-grouping').length <= 1 ) {
+			$table.find('.cmb-remove-group-row').prop( 'disabled', true );
 		} else {
-			$table.find('.cmb-remove-group-row').removeAttr( 'disabled' );
+			$table.find('.cmb-remove-group-row').prop( 'disabled', false );
 		}
 
 		$table.trigger( 'cmb2_add_row', $newRow );
 	};
 
-	cmb.addAjaxRow = function( event ) {
-
-		event.preventDefault();
+	cmb.addAjaxRow = function( evt ) {
+		evt.preventDefault();
 
 		var $self         = $(this);
-		var tableselector = '#'+ $self.data('selector');
-		var $table        = $(tableselector);
+		var $table        = $id( $self.data('selector') );
 		var $emptyrow     = $table.find('.empty-row');
 		var prevNum       = parseInt( $emptyrow.find('[data-iterator]').data('iterator') );
 		cmb.idNumber      = prevNum + 1;
 		var $row          = $emptyrow.clone();
 
-		$row.newRowHousekeeping().cleanRow( prevNum );
+		cmb.newRowHousekeeping( $row ).cleanRow( $row, prevNum );
 
 		$emptyrow.removeClass('empty-row hidden').addClass('cmb-repeat-row');
 		$emptyrow.after( $row );
 
 		cmb.afterRowInsert( $row );
+
 		$table.trigger( 'cmb2_add_row', $row );
 
-		$table.find( '.cmb-remove-row-button' ).removeAttr( 'disabled' );
+		$table.find( '.cmb-remove-row-button' ).removeClass( 'button-disabled' );
 
 	};
 
-	cmb.removeGroupRow = function( event ) {
-		event.preventDefault();
+	cmb.removeGroupRow = function( evt ) {
+		evt.preventDefault();
+
 		var $self   = $(this);
-		var $table  = $('#'+ $self.data('selector'));
+		var $table  = $id( $self.data('selector') );
 		var $parent = $self.parents('.cmb-repeatable-grouping');
 		var number  = $table.find('.cmb-repeatable-grouping').length;
 
 		if ( number > 1 ) {
+
+			$table.trigger( 'cmb2_remove_group_row_start', $self );
+
 			// when a group is removed loop through all next groups and update fields names
 			$parent.nextAll( '.cmb-repeatable-grouping' ).find( cmb.repeatEls ).each( cmb.updateNameAttr );
 
 			$parent.remove();
+
 			if ( number <= 2 ) {
-				$table.find('.cmb-remove-group-row').attr( 'disabled', 'disabled' );
+				$table.find('.cmb-remove-group-row').prop( 'disabled', true );
 			} else {
-				$table.find('.cmb-remove-group-row').removeAttr( 'disabled' );
+				$table.find('.cmb-remove-group-row').prop( 'disabled', false );
 			}
+
 			$table.trigger( 'cmb2_remove_row' );
 		}
 
 	};
 
-	cmb.removeAjaxRow = function( event ) {
-		event.preventDefault();
-		var $self   = $(this);
+	cmb.removeAjaxRow = function( evt ) {
+		evt.preventDefault();
+
+		var $self = $(this);
+
+		// Check if disabled
+		if ( $self.hasClass( 'button-disabled' ) ) {
+			return;
+		}
+
 		var $parent = $self.parents('.cmb-row');
 		var $table  = $self.parents('.cmb-repeat-table');
 		var number  = $table.find('.cmb-row').length;
@@ -526,25 +577,31 @@ window.CMB2 = (function(window, document, $, undefined){
 			}
 			$self.parents('.cmb-repeat-table .cmb-row').remove();
 			if ( number === 3 ) {
-				$table.find( '.cmb-remove-row-button' ).attr( 'disabled', 'disabled' );
+				$table.find( '.cmb-remove-row-button' ).addClass( 'button-disabled' );
 			}
 			$table.trigger( 'cmb2_remove_row' );
 		} else {
-			$self.attr( 'disabled', 'disabled' );
+			$self.addClass( 'button-disabled' );
 		}
 	};
 
-	cmb.shiftRows = function( event ) {
+	cmb.shiftRows = function( evt ) {
 
-		event.preventDefault();
+		evt.preventDefault();
 
 		var $self     = $(this);
+		// before anything signif happens
+		$self.trigger( 'cmb2_shift_rows_enter', $self );
+
 		var $parent   = $self.parents( '.cmb-repeatable-grouping' );
 		var $goto     = $self.hasClass( 'move-up' ) ? $parent.prev( '.cmb-repeatable-grouping' ) : $parent.next( '.cmb-repeatable-grouping' );
 
 		if ( ! $goto.length ) {
 			return;
 		}
+
+		// we're gonna shift
+		$self.trigger( 'cmb2_shift_rows_start', $self );
 
 		var inputVals = [];
 		// Loop this items fields
@@ -554,7 +611,7 @@ window.CMB2 = (function(window, document, $, undefined){
 			if ( $element.hasClass('cmb2-media-status') ) {
 				// special case for image previews
 				val = $element.html();
-			} else if ( 'checkbox' === $element.attr('type') ) {
+			} else if ( 'checkbox' === $element.attr('type') || 'radio' === $element.attr('type') ) {
 				val = $element.is(':checked');
 			} else if ( 'select' === $element.prop('tagName') ) {
 				val = $element.is(':selected');
@@ -572,26 +629,29 @@ window.CMB2 = (function(window, document, $, undefined){
 			if ( $element.hasClass('cmb2-media-status') ) {
 				// special case for image previews
 				val = $element.html();
-				$element.html( inputVals[ index ]['val'] );
-				inputVals[ index ]['$'].html( val );
+				$element.html( inputVals[ index ].val );
+				inputVals[ index ].$.html( val );
 
 			}
 			// handle checkbox swapping
-			else if ( 'checkbox' === $element.attr('type') ) {
-				inputVals[ index ]['$'].prop( 'checked', $element.is(':checked') );
-				$element.prop( 'checked', inputVals[ index ]['val'] );
+			else if ( 'checkbox' === $element.attr('type') || 'radio' === $element.attr( 'type' )  ) {
+				inputVals[ index ].$.prop( 'checked', $element.is(':checked') );
+				$element.prop( 'checked', inputVals[ index ].val );
 			}
 			// handle select swapping
 			else if ( 'select' === $element.prop('tagName') ) {
-				inputVals[ index ]['$'].prop( 'selected', $element.is(':selected') );
-				$element.prop( 'selected', inputVals[ index ]['val'] );
+				inputVals[ index ].$.prop( 'selected', $element.is(':selected') );
+				$element.prop( 'selected', inputVals[ index ].val );
 			}
 			// handle normal input swapping
 			else {
-				inputVals[ index ]['$'].val( $element.val() );
-				$element.val( inputVals[ index ]['val'] );
+				inputVals[ index ].$.val( $element.val() );
+				$element.val( inputVals[ index ].val );
 			}
 		});
+
+		// shift done
+		$self.trigger( 'cmb2_shift_rows_complete', $self );
 	};
 
 	cmb.initPickers = function( $timePickers, $datePickers, $colorPickers ) {
@@ -610,7 +670,8 @@ window.CMB2 = (function(window, document, $, undefined){
 			return;
 		}
 
-		$selector.timePicker( cmb.defaults.timePicker );
+		$selector.timepicker( 'destroy' );
+		$selector.timepicker( cmb.defaults.time_picker );
 	};
 
 	cmb.initDatePickers = function( $selector ) {
@@ -618,8 +679,8 @@ window.CMB2 = (function(window, document, $, undefined){
 			return;
 		}
 
-		$selector.datepicker( "destroy" );
-		$selector.datepicker( cmb.defaults.datePicker );
+		$selector.datepicker( 'destroy' );
+		$selector.datepicker( cmb.defaults.date_picker );
 	};
 
 	cmb.initColorPickers = function( $selector ) {
@@ -628,12 +689,12 @@ window.CMB2 = (function(window, document, $, undefined){
 		}
 		if (typeof jQuery.wp === 'object' && typeof jQuery.wp.wpColorPicker === 'function') {
 
-			$selector.wpColorPicker( cmb.defaults.colorPicker );
+			$selector.wpColorPicker( cmb.defaults.color_picker );
 
 		} else {
 			$selector.each( function(i) {
 				$(this).after('<div id="picker-' + i + '" style="z-index: 1000; background: #EEE; border: 1px solid #CCC; position: absolute; display: block;"></div>');
-				$('#picker-' + i).hide().farbtastic($(this));
+				$id( 'picker-' + i ).hide().farbtastic($(this));
 			})
 			.focus( function() {
 				$(this).next().show();
@@ -647,7 +708,7 @@ window.CMB2 = (function(window, document, $, undefined){
 	cmb.makeListSortable = function() {
 		var $filelist = cmb.metabox().find( '.cmb2-media-status.cmb-attach-list' );
 		if ( $filelist.length ) {
-			$filelist.sortable({ cursor: "move" }).disableSelection();
+			$filelist.sortable({ cursor: 'move' }).disableSelection();
 		}
 	};
 
