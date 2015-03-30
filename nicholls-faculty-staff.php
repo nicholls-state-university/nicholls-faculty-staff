@@ -8,21 +8,289 @@ Version: 0.5
 Author URI: http://nicholls.edu
 */
 
-add_action( 'init', 'cmb_initialize_cmb_meta_boxes', 9999 );
 /**
- * Initialize the metabox class.
- * https://github.com/WebDevStudios/Custom-Metaboxes-and-Fields-for-WordPress
+ * Get the CMB2 bootstrap!
  */
-if ( !function_exists( 'cmb_initialize_cmb_meta_boxe' ) ) {
-	function cmb_initialize_cmb_meta_boxes() {
 
-		if ( ! class_exists( 'cmb_Meta_Box' ) )
-			require_once 'Custom-Metaboxes-and-Fields-for-WordPress/init.php';
-
-	}
+if ( file_exists( dirname( __FILE__ ) . '/cmb2/init.php' ) ) {
+	require_once dirname( __FILE__ ) . '/cmb2/init.php';
+} elseif ( file_exists( dirname( __FILE__ ) . '/CMB2/init.php' ) ) {
+	require_once dirname( __FILE__ ) . '/CMB2/init.php';
 }
 
-add_filter('cmb_meta_box_url', 'nicholls_fs_url_filter');
+/**
+ * CMB2 Tabbed Theme Options
+ *
+ * @author    Arushad Ahmed <@dash8x, contact@arushad.org>
+ * @link      http://arushad.org/how-to-create-a-tabbed-options-page-for-your-wordpress-theme-using-cmb
+ * @version   0.1.0
+ */
+class nicholls_fs_core {
+
+    /**
+     * Default Option key
+     * @var string
+     */
+    public $key = 'nicholls_fs';
+
+    /**
+     * Options prefix for all saved options
+     * @var string
+     */    
+    // Start with an underscore to hide fields from custom fields list
+	public $prefix = '_nicholls_fs_';
+
+    /**
+     * Default Option key
+     * @var string
+     */
+    public $general_options = array();
+    
+    /**
+     * Constructor
+     * @since 0.1.0
+     */
+    public function __construct() {
+        // Get our core settings
+        $this->general_options = get_option( $this->prefix . 'general_options' );
+        
+        // Make sure text - url is properly sanitized.
+        $this->default_url = sanitize_title( $this->general_options['default_url'] );
+        if ( empty( $this->default_url ) ) $this->default_url = 'faculty-staff';
+
+        // Make sure text - url is properly sanitized.
+        $this->default_area_url = sanitize_title( $this->general_options['default_area_url'] );
+        if ( empty( $this->default_area_url ) ) $this->default_area_url = 'faculty-staff-departments';        
+    }
+
+}
+
+$nicholls_fs_core = new nicholls_fs_core();
+
+/**
+ * CMB2 Tabbed Theme Options
+ *
+ * @author    Arushad Ahmed <@dash8x, contact@arushad.org>
+ * @link      http://arushad.org/how-to-create-a-tabbed-options-page-for-your-wordpress-theme-using-cmb
+ * @version   0.1.0
+ */
+class CMB2_Tab_Admin {
+
+    /**
+     * Default Option key
+     * @var string
+     */
+    private $key = 'nicholls_fs';
+
+    /**
+     * Array of metaboxes/fields
+     * @var array
+     */
+    protected $option_metabox = array();
+
+    /**
+     * Options Page title
+     * @var string
+     */
+    protected $title = '';
+
+    /**
+     * Options prefix for all saved options
+     * @var string
+     */    
+    // Start with an underscore to hide fields from custom fields list
+	protected $prefix = '_nicholls_fs_';
+
+    /**
+     * Options Tab Pages
+     * @var array
+     */
+    protected $options_pages = array();
+
+    /**
+     * Constructor
+     * @since 0.1.0
+     */
+    public function __construct() {
+        // Set our title
+        $this->title = __( 'Nicholls Faculty & Staff Options', 'theme_textdomain' );
+    }
+
+    /**
+     * Initiate our hooks
+     * @since 0.1.0
+     */
+    public function hooks() {
+        add_action( 'admin_init', array( $this, 'init' ) );
+        add_action( 'admin_menu', array( $this, 'add_options_page' ) ); //create tab pages
+    }
+
+    /**
+     * Register our setting tabs to WP
+     * @since  0.1.0
+     */
+    public function init() {
+    	$option_tabs = self::option_fields();
+        foreach ( $option_tabs as $index => $option_tab ) {
+        	register_setting( $option_tab['id'], $option_tab['id'] );
+        }
+    }
+
+    /**
+     * Add menu options page
+     * @since 0.1.0
+     */
+    public function add_options_page() {        
+        $option_tabs = self::option_fields();
+                
+        foreach ($option_tabs as $index => $option_tab) {
+        	if ( $index == 0) {
+        		$this->options_pages[] = add_submenu_page( 'edit.php?post_type=n-faculty-staff', $this->title, $this->title, 'manage_options', $option_tab['id'], array( $this, 'admin_page_display' ) );
+        	} else {
+        		$this->options_pages[] = add_submenu_page( 'edit.php?post_type=n-faculty-staff', $option_tab['title'], $option_tab['title'], 'manage_options', $option_tab['id'], array( $this, 'admin_page_display' ) );
+        	}
+        }
+    }
+
+    /**
+     * Admin page markup. Mostly handled by CMB2
+     * @since  0.1.0
+     */
+    public function admin_page_display() {
+    	$option_tabs = self::option_fields(); //get all option tabs
+    	$tab_forms = array();     	   	
+        ?>
+        <div class="wrap cmb_options_page <?php echo $this->key; ?>">        	
+            <h2><?php echo esc_html( get_admin_page_title() ); ?></h2>
+            
+            <!-- Options Page Nav Tabs -->           
+            <h2 class="nav-tab-wrapper">
+            	<?php foreach ($option_tabs as $option_tab) :
+            		$tab_slug = $option_tab['id'];
+            		$nav_class = 'nav-tab';
+            		if ( $tab_slug == $_GET['page'] ) {
+            			$nav_class .= ' nav-tab-active'; //add active class to current tab
+            			$tab_forms[] = $option_tab; //add current tab to forms to be rendered
+            		}
+            	?>            	
+            	<a class="<?php echo $nav_class; ?>" href="<?php menu_page_url( $tab_slug ); ?>"><?php esc_attr_e($option_tab['title']); ?></a>
+            	<?php endforeach; ?>
+            </h2>
+            <!-- End of Nav Tabs -->
+
+            <?php foreach ($tab_forms as $tab_form) : //render all tab forms (normaly just 1 form) ?>
+            <div id="<?php esc_attr_e($tab_form['id']); ?>" class="group">
+            	<?php cmb2_metabox_form( $tab_form, $tab_form['id'] ); ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * Defines the theme option metabox and field configuration
+     * @since  0.1.0
+     * @return array
+     */
+    public function option_fields() {
+
+        global $nicholls_fs_core;
+        
+        // Only need to initiate the array once per page-load
+        if ( ! empty( $this->option_metabox ) ) {
+            return $this->option_metabox;
+        }        
+
+        $this->option_metabox[] = array(
+            'id'         => $nicholls_fs_core->prefix . 'general_options', //id used as tab page slug, must be unique
+            'title'      => 'General Options',
+            'show_on'    => array( 'key' => 'options-page', 'value' => array( $nicholls_fs_core->prefix . 'general_options' ), ), //value must be same as id
+            'show_names' => true,
+            'fields'     => array(
+				
+				array(
+					'name' => 'Faculty & Staff Options',
+					'desc' => '<p>General options for faculty and staff listings.</p>',
+					'type' => 'title',
+					'id'   => 'title'
+				),
+            	array(
+					'name' => __('Default URL', 'theme_textdomain'),
+					'desc' => __('Front end URL slug for directory profiles.', 'theme_textdomain'),
+					'id' => 'default_url',
+					'default' => 'faculty-staff',				
+					'type' => 'text',
+				),
+            	array(
+					'name' => __('Default Area URL', 'theme_textdomain'),
+					'desc' => __('Front end URL slug for departments or areas', 'theme_textdomain'),
+					'id' => 'default_area_url',
+					'default' => 'faculty-staff-departments',				
+					'type' => 'text',
+				)
+			)
+        );
+        
+        $this->option_metabox[] = array(
+            'id'         => 'advanced_options',
+            'title'      => 'Advanced Settings',
+            'show_on'    => array( 'key' => 'options-page', 'value' => array( $nicholls_fs_core->prefix . 'general_options' ), ), //value must be same as id
+            'show_names' => true,
+            'fields'     => array(
+
+			)
+        );
+        
+        //insert extra tabs here
+
+        return $this->option_metabox;
+    }
+
+    /**
+     * Returns the option key for a given field id
+     * @since  0.1.0
+     * @return array
+     */
+    public function get_option_key($field_id) {
+    	$option_tabs = $this->option_fields();
+    	foreach ($option_tabs as $option_tab) { //search all tabs
+    		foreach ($option_tab['fields'] as $field) { //search all fields
+    			if ($field['id'] == $field_id) {
+    				return $option_tab['id'];
+    			}
+    		}
+    	}
+    	return $this->key; //return default key if field id not found
+    }
+
+    /**
+     * Public getter method for retrieving protected/private variables
+     * @since  0.1.0
+     * @param  string  $field Field to retrieve
+     * @return mixed          Field value or exception is thrown
+     */
+    public function __get( $field ) {
+
+        // Allowed fields to retrieve
+        if ( in_array( $field, array( 'key', 'fields', 'title', 'options_pages' ), true ) ) {
+            return $this->{$field};
+        }
+        if ( 'option_metabox' === $field ) {
+            return $this->option_fields();
+        }
+
+        throw new Exception( 'Invalid property: ' . $field );
+    }
+
+}
+
+// Activate options area.
+$nicholls_fs_admin = new CMB2_Tab_Admin();
+$nicholls_fs_admin->hooks();
+
+/** End Tabbed Options Interfaces **/
+
+add_filter('cmb2_meta_box_url', 'nicholls_fs_url_filter');
 /**
 * Filter to use protocol independent URL for CMB tools
 *
@@ -261,6 +529,9 @@ add_action('init', 'nicholls_fs_init');
 */
 function nicholls_fs_init() {  
 
+    // Global config variagle
+    global $nicholls_fs_core;
+    
     // Setup custom post type
     $args = array(  
         'label' => __( 'Nicholls Faculty & Staff' ),
@@ -285,7 +556,7 @@ function nicholls_fs_init() {
         'hierarchical' => false,
         'has_archive' => true,
         'rewrite' => array( 
-			'slug' => 'faculty-staff',
+			'slug' => $nicholls_fs_core->default_url,
 			'with_front' => false
 		),  
         'supports' => array('title', 'editor', 'thumbnail', 'revisions', 'page-attributes'),
@@ -386,132 +657,83 @@ function nicholls_fs_template_smart(){
 
 }
 
-add_filter( 'cmb_meta_boxes', 'nicholls_fs_metaboxes' );
+add_filter( 'cmb2_init', 'nicholls_fs_metaboxes' );
 /**
  * Define the metabox and field configurations.
  *
  * @param  array $meta_boxes
  * @return array
  */
-function nicholls_fs_metaboxes( array $meta_boxes ) {
+function nicholls_fs_metaboxes() {
 
 	// Start with an underscore to hide fields from custom fields list
 	$prefix = '_nicholls_fs_';
 	
-	$meta_boxes['n_metabox'] = array(
-		'id'         => 'n_metabox_fs',
-		'title'      => __( 'Employee Information', 'cmb' ),
-		'pages'      => array( 'n-faculty-staff', ), // Post type
-		'context'    => 'normal',
-		'priority'   => 'high',
-		'show_names' => true, // Show field names on the left
-		// 'cmb_styles' => true, // Enqueue the CMB stylesheet on the frontend
-		'fields'     => array(
-			array(
-				'name'       => __( 'Employee Title', 'cmb' ),
-				'desc'       => __( 'field description (optional)', 'cmb' ),
-				'id'         => $prefix . 'employee_title',
-				'type'       => 'text',
-				// 'show_on_cb' => 'cmb_test_text_show_on_cb', // function should return a bool value
-				// 'sanitization_cb' => 'my_custom_sanitization', // custom sanitization callback parameter
-				// 'escape_cb'       => 'my_custom_escaping',  // custom escaping callback parameter
-				// 'on_front'        => false, // Optionally designate a field to wp-admin only
-				// 'repeatable'      => true,
-			),	
-			array(
-				'name'       => __( 'Employee Departmnet', 'cmb' ),
-				'desc'       => __( 'field description (optional)', 'cmb' ),
-				'id'         => $prefix . 'employee_dept',
-				'type'       => 'text',
-				// 'show_on_cb' => 'cmb_test_text_show_on_cb', // function should return a bool value
-				// 'sanitization_cb' => 'my_custom_sanitization', // custom sanitization callback parameter
-				// 'escape_cb'       => 'my_custom_escaping',  // custom escaping callback parameter
-				// 'on_front'        => false, // Optionally designate a field to wp-admin only
-				// 'repeatable'      => true,
-			),			
-			array(
-				'name' => __( 'Employee Email', 'cmb' ),
-				'desc' => __( 'field description (optional)', 'cmb' ),
-				'id'   => $prefix . 'employee_email',
-				'type' => 'text_email',
-				// 'repeatable' => true,
-			),
-			array(
-				'name' => __( 'Employee Phone Number', 'cmb' ),
-				'desc' => __( 'Please input full phone number with area code xxx.xxx.xxxx', 'cmb' ),
-				'id'   => $prefix . 'phone',
-				'type' => 'text',
-				// 'repeatable' => true,
-			),
-			array(
-				'name' => __( 'Employee Office Location', 'cmb' ),
-				'desc' => __( 'Please input building and room number if known.', 'cmb' ),
-				'id'   => $prefix . 'office',
-				'type' => 'text',
-				// 'repeatable' => true,
-			),						
-			array(
-				'name' => __( 'Employee Photo', 'cmb' ),
-				'desc' => __( 'Please upload a proper photo', 'cmb' ),
-				'id'   => $prefix . 'employee_photo',
-				'type' => 'file',
-			),
-		)
-	);
+	// Start with a new metabox
+	$cmb_demo = new_cmb2_box( array(
+		'id'            => $prefix . 'n_metabox_fs',
+		'title'         => __( 'Employee Information', 'nicholls_fs' ),
+		'object_types'  => array( 'n-faculty-staff', ), // Post type
+		'context'       => 'normal',
+		'priority'      => 'high',
+		'show_names'    => true, // Show field names on the left
+		// 'cmb_styles' => false, // false to disable the CMB stylesheet
+		// 'closed'     => true, // true to keep the metabox closed by default
+	) );
+	
+	// Add field to metabox group
+	$cmb_demo->add_field( array(
+		'name'       => __( 'Employee Title', 'nicholls_fs' ),
+		'desc'       => __( 'Use full title as indicated by Human Resources', 'nicholls_fs' ),
+		'id'         => $prefix . 'employee_title',
+		'type'       => 'text',
+		// 'show_on_cb' => 'yourprefix_hide_if_no_cats', // function should return a bool value
+		// 'sanitization_cb' => 'my_custom_sanitization', // custom sanitization callback parameter
+		// 'escape_cb'       => 'my_custom_escaping',  // custom escaping callback parameter
+		// 'on_front'        => false, // Optionally designate a field to wp-admin only
+		// 'repeatable'      => true,
+	) );
+	
+	// Add field to metabox group
+	$cmb_demo->add_field( array(
+		'name'       => __( 'Employee Departmnet', 'nicholls_fs' ),
+		'desc'       => __( 'Use assigned department as indicated by Human Resources', 'nicholls_fs' ),
+		'id'         => $prefix . 'employee_dept',
+		'type'       => 'text'
+	) );		
 
-	/**
-	 * Repeatable Field Groups
-	 */
-	$meta_boxes['n_field_group'] = array(
-		'id'         => 'course_group_fs',
-		'title'      => __( 'Faculty Courses', 'cmb' ),
-		'pages'      => array( 'n-faculty-staff', ),
-		'fields'     => array(
-			array(
-				'id'          => $prefix . 'courses',
-				'type'        => 'group',
-				'description' => __( 'Place information about courses taught below', 'cmb' ),
-				'options'     => array(
-					'group_title'   => __( 'Course {#}', 'cmb' ), // {#} gets replaced by row number
-					'add_button'    => __( 'Add Another Course', 'cmb' ),
-					'remove_button' => __( 'Remove Course', 'cmb' ),
-					'sortable'      => true, // beta
-				),
-				// Fields array works the same, except id's only need to be unique for this group. Prefix is not needed.
-				'fields'      => array(
-					array(
-						'name' => 'Course or Class Title',
-						'id'   => 'course_title',
-						'type' => 'text',
-						// 'repeatable' => true, // Repeatable fields are supported w/in repeatable groups (for most types)
-					),
-					array(
-						'name' => 'Course Description',
-						'description' => 'Write a short description for this course',
-						'id'   => 'description',
-						'type' => 'textarea_small',
-					),
-					array(
-						'name' => __( 'Course Day', 'cmb' ),
-						'desc' => __( 'Input meeting days (typically format as M/W/F,T/Th, or similar)', 'cmb' ),
-						'id'   => 'course_meeting_days',
-						'time_format' => 'l',
-						'type' => 'text',
-					),
-					array(
-						'name' => __( 'Class Time', 'cmb' ),
-						'desc' => __( 'Format as XX:XX or use suggested format', 'cmb' ),
-						'id'   => 'course_meeting_times',
-						'type' => 'text_time',
-					),											
-				),
-			),
-		),
-	);
+	// Add field to metabox group
+	$cmb_demo->add_field( array(
+		'name'       => __( 'Employee Email', 'nicholls_fs' ),
+		'desc'       => __( 'Use the full confirmed nicholls.edu email address', 'nicholls_fs' ),
+		'id'         => $prefix . 'employee_email',
+		'type'       => 'text_email'
+	) );
 
-	// Add other metaboxes as needed
+	// Add field to metabox group
+	$cmb_demo->add_field( array(
+		'name'       => __( 'Employee Phone Number', 'nicholls_fs' ),
+		'desc'       => __( 'Please input full phone number with area code xxx.xxx.xxxx', 'nicholls_fs' ),
+		'id'         => $prefix . 'phone',
+		'type'       => 'text'
+	) );
 
-	return $meta_boxes;
+	// Add field to metabox group
+	$cmb_demo->add_field( array(
+		'name'       => __( 'Employee Office Location', 'nicholls_fs' ),
+		'desc'       => __( 'Please upload a recent headshot photo', 'nicholls_fs' ),
+		'id'         => $prefix . 'office',
+		'type'       => 'text'
+	) );
+
+	// Add field to metabox group
+	$cmb_demo->add_field( array(
+		'name' => __( 'Employee Photo', 'nicholls_fs' ),
+		'desc' => __( 'Upload an image or enter a URL.', 'nicholls_fs' ),
+		'id'   => $prefix . 'employee_photo',
+		'type' => 'file',
+	) );
+
 }
 
 /**
