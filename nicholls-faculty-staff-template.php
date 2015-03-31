@@ -34,35 +34,6 @@ get_header();
 				<?php the_content(); ?>
 			</div>
 						
-<?php
-$nicholls_fs_courses = get_post_meta( get_the_ID(), '_nicholls_fs_courses', true );
-?>
-
-<?php if (!empty( $nicholls_fs_courses ) ) : ?>
-				<div class="nicholls-fs-courses">
-				<h3>Courses Taught</h3>
-				<table class="table-defaults table-center table-lines-vertical table-cells-even-down-grey table-border-black">
-					<tr>
-						<th>Course</th> <th>Description</th> <th>Meeting Days</th> <th>Meeting Times</th>
-					</tr>
-<?php
-
-foreach ( $nicholls_fs_courses as $course => $course_info ) {
-	echo '<tr>';
-
-	echo '<td>' . $course_info['course_title'] . '</td>';
-	echo '<td>' . $course_info['description'] . '</td>';
-	echo '<td>' . $course_info['course_meeting_days'] . '</td>';
-	echo '<td>' . $course_info['course_meeting_times'] . '</td>';
-
-	echo '</tr>';
-}
-
-?>			
-					
-				</table>	
-				</div>
-<?php endif; ?>
 
 <?php nicholls_fs_email_form(); ?>
 <?php 
