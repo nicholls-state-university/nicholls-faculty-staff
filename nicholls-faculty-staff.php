@@ -39,13 +39,16 @@ class nicholls_fs_core {
      */    
     // Start with an underscore to hide fields from custom fields list
 	public $prefix = '_nicholls_fs_';
-
+	
     /**
-     * Default Option key
+     * Default public variables.
      * @var string
      */
     public $general_options = array();
-    
+	public $default_url = 'faculty-staff';
+	public $default_area_url = 'faculty-staff-departments';
+	public $default_title = 'Faculty &amp; Staff';
+
     /**
      * Constructor
      * @since 0.1.0
@@ -60,7 +63,12 @@ class nicholls_fs_core {
 
         // Make sure text - url is properly sanitized.
         $this->default_area_url = sanitize_title( $this->general_options['default_area_url'] );
-        if ( empty( $this->default_area_url ) ) $this->default_area_url = 'faculty-staff-departments';        
+        if ( empty( $this->default_area_url ) ) $this->default_area_url = 'faculty-staff-departments';   
+        
+        // Set title default if not found.
+        $this->default_title = $this->general_options['default_title'];
+        if ( empty( $this->default_title ) ) $this->default_title = 'Faculty &amp; Staff';  
+        
     }
 
 }
@@ -112,8 +120,9 @@ class CMB2_Tab_Admin {
      * @since 0.1.0
      */
     public function __construct() {
+        global $nicholls_fs_core;
         // Set our title
-        $this->title = __( 'Nicholls Faculty & Staff Options', 'theme_textdomain' );
+        $this->title = $nicholls_fs_core->default_title . __( ' Options', 'nicholls_fs' );
     }
 
     /**
@@ -214,6 +223,13 @@ class CMB2_Tab_Admin {
 					'type' => 'title',
 					'id'   => 'title'
 				),
+            	array(
+					'name' => __('Default Title', 'theme_textdomain'),
+					'desc' => __('Front end title directory areas.', 'theme_textdomain'),
+					'id' => 'default_title',
+					'default' => $nicholls_fs_core->default_title,				
+					'type' => 'text',
+				),				
             	array(
 					'name' => __('Default URL', 'theme_textdomain'),
 					'desc' => __('Front end URL slug for directory profiles.', 'theme_textdomain'),
@@ -534,18 +550,18 @@ function nicholls_fs_init() {
     
     // Setup custom post type
     $args = array(  
-        'label' => __( 'Nicholls Faculty & Staff' ),
+        'label' => __( 'Nicholls ' ) . $nicholls_fs_core->default_title,
         'labels' => array(
-                'name' => __( 'Faculty & Staff' ),
-                'singular_name' => __( 'Faculty & Staff' ),
-                'add_new' => __( 'Add New Faculty & Staff' ),
-                'add_new_item' => __( 'Add New Faculty & Staff' ),
-                'edit_item' => __( 'Edit Faculty & Staff' ),
-                'new_item' => __( 'Add New Faculty & Staff' ),
-                'view_item' => __( 'View Faculty & Staff' ),
-                'search_items' => __( 'Search Faculty & Staff' ),
-                'not_found' => __( 'No faculty & ftaff found' ),
-                'not_found_in_trash' => __( 'No faculty & staff found in trash' )
+                'name' => $nicholls_fs_core->default_title,
+                'singular_name' => $nicholls_fs_core->default_title,
+                'add_new' => __( 'Add New ' ) . $nicholls_fs_core->default_title,
+                'add_new_item' => __( 'Add New ' ) . $nicholls_fs_core->default_title,
+                'edit_item' => __( 'Edit ' ) . $nicholls_fs_core->default_title,
+                'new_item' => __( 'Add New ' ) . $nicholls_fs_core->default_title,
+                'view_item' => __( 'View ' ) . $nicholls_fs_core->default_title,
+                'search_items' => __( 'Search ' ) . $nicholls_fs_core->default_title,
+                'not_found' => __( 'Nothing found' ),
+                'not_found_in_trash' => __( 'Nothing found in trash' )
 		),
 		'taxonomies'    => array(
 			'n-faculty-staff-taxonomy',
