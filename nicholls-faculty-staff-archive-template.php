@@ -7,20 +7,40 @@
 * @package FNBX Theme
 * @subpackage Template
 */
+global $nicholls_fs_core;
 ?>
 <?php get_header() ?>
 
-<h1><?php post_type_archive_title(); ?></h1>
+<?php
+// This is the main title for the archive pages.
+
+	$tax_title = '';
+	$post_type_obj = get_post_type_object( 'n-faculty-staff' );
+	if ( !empty( $post_type_obj ) ) 
+		$tax_title = $post_type_obj->labels->name;
+		
+	$cur_title = '';
+	if ( is_tax() ) {
+		$the_tax = get_query_var( 'term' );
+		$the_tax_obj = get_term_by( 'slug', $the_tax, 'n-faculty-staff-taxonomy' );
+		$cur_title = ' &raquo ' . $the_tax_obj->name;
+	}
+	
+	echo '<h1>' . $tax_title . $cur_title . '</h1>';
+
+?>
 			
 			<div class="nicholls-fs-departments">
 <?php
 $taxonomy = 'n-faculty-staff-taxonomy';
 $terms = get_terms( $taxonomy, '' );
+
 if ($terms) {
-	echo '<strong>Departments</strong><br />';
+	echo '<strong>Departments or Areas</strong><br />';
 	echo '<ul class="nicholls-fs-department-links">';
+	echo '<li class="nicholls-fs-department-link">' . '<a href="' . esc_attr( get_site_url() . '/' . $nicholls_fs_core->default_url ) . '" title="' . __( "View all" ) . '" ' . '>' . __( "View all" ) . '</a></li>';
 	foreach($terms as $term) {
-		echo '<li class="nicholls-fs-department-link">' . '<a href="' . esc_attr(get_term_link($term, $taxonomy)) . '" title="' . sprintf( __( "View all posts in %s" ), $term->name ) . '" ' . '>' . $term->name.'</a></li>';
+		echo '<li class="nicholls-fs-department-link">' . '<a href="' . esc_attr( get_term_link($term, $taxonomy) ) . '" title="' . sprintf( __( "View all posts in %s" ), $term->name ) . '" ' . '>' . $term->name.'</a></li>';
 	}
 	echo '</ul>';
 }

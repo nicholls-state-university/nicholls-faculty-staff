@@ -74,6 +74,7 @@ class nicholls_fs_core {
 }
 
 $nicholls_fs_core = new nicholls_fs_core();
+global $nicholls_fs_core;
 
 /**
  * CMB2 Tabbed Theme Options
@@ -649,28 +650,40 @@ function nicholls_fs_template_smart(){
 
         $template = locate_template( array( $single_template_name), true );
         if( empty( $template ) ) {
-          include( $fs_template_dir . '/' . $single_template_name);
-          exit();
+          $return_template = $fs_template_dir . '/' . $single_template_name;
+          nicholls_fs_do_theme_redirect($return_template);
         }
 
     } else if ( is_archive() && 'n-faculty-staff' == get_post_type() ) {
 
         $template = locate_template( array( $archive_template_name ), true );
         if(empty($template)) {
-          include( $fs_template_dir . '/' . $archive_template_name);
-          exit();
+          $return_template = $fs_template_dir . '/' . $archive_template_name;
+          nicholls_fs_do_theme_redirect($return_template);
         }
 
     } else if ( is_tax( 'n-faculty-staff-taxonomy' ) ) {
 
         $template = locate_template( array( $archive_template_name ), true );
         if(empty($template)) {
-          include( $fs_template_dir . '/' . $archive_template_name);
-          exit();
+          $return_template = $fs_template_dir . '/' . $archive_template_name;
+          nicholls_fs_do_theme_redirect($return_template);
         }
             
     }
+}
 
+/**
+* Helper function for template redirections
+*/
+function nicholls_fs_do_theme_redirect($url) {
+    global $post, $wp_query;
+    if (have_posts()) {
+        include($url);
+        die();
+    } else {
+        $wp_query->is_404 = true;
+    }
 }
 
 /**
