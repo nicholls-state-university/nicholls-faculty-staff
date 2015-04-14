@@ -686,6 +686,7 @@ function nicholls_fs_do_theme_redirect($url) {
     }
 }
 
+
 /**
  * Limit, change number of posts in archive pages
  */
@@ -693,6 +694,8 @@ add_filter('pre_get_posts', 'limit_change_posts_archive');
 function limit_change_posts_archive($query){
 	if ( $query->is_archive && $query->query_vars['post_type'] == 'n-faculty-staff') {
 		$query->set( 'posts_per_page', -1 );
+		$query->set( 'orderby', 'title' );
+		$query->set( 'order', 'ASC' );		
 	}
 	return $query;
 }

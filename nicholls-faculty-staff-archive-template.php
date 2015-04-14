@@ -8,10 +8,12 @@
 * @subpackage Template
 */
 global $nicholls_fs_core;
+
 ?>
 <?php get_header() ?>
 
 <?php
+
 // This is the main title for the archive pages.
 
 	$tax_title = '';
