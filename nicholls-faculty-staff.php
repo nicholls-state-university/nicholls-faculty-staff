@@ -322,6 +322,8 @@ function nicholls_fs_url_filter( $c_url ) {
 */
 function nicholls_fs_display_departments() {		
 
+	global $nicholls_fs_core;
+	
 	echo '<div class="nicholls-fs-departments clear-group">';
 
 	$taxonomy = 'n-faculty-staff-taxonomy';
