@@ -318,6 +318,30 @@ function nicholls_fs_url_filter( $c_url ) {
 }
 
 /**
+* Display Departments or Areas
+*/
+function nicholls_fs_display_departments() {		
+
+	echo '<div class="nicholls-fs-departments clear-group">';
+
+	$taxonomy = 'n-faculty-staff-taxonomy';
+	$terms = get_terms( $taxonomy, '' );
+
+	if ($terms) {
+		echo '<strong>Departments or Areas</strong><br />';
+		echo '<ul class="nicholls-fs-department-links">';
+		echo '<li class="nicholls-fs-department-link">' . '<a href="' . esc_attr( get_site_url() . '/' . $nicholls_fs_core->default_url ) . '" title="' . __( "View all" ) . '" ' . '>' . __( "View all" ) . '</a></li>';
+		foreach($terms as $term) {
+			echo '<li class="nicholls-fs-department-link">' . '<a href="' . esc_attr( get_term_link($term, $taxonomy) ) . '" title="' . sprintf( __( "View all posts in %s" ), $term->name ) . '" ' . '>' . $term->name.'</a></li>';
+		}
+		echo '</ul>';
+	}
+
+	echo '</div>';
+}
+			
+			
+/**
 * Email contact form
 *
 */

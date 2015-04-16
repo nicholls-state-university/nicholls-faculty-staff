@@ -10,7 +10,6 @@ get_header();
 		<div id="container" class="container-">
 			<div id="content" class="content-" role="main">
 
-
 			<h2 class="entry-title" id="post-<?php the_ID(); ?>"><a href="<?php the_permalink() ?>" rel="bookmark"><?php the_title(); ?></a></h2>
 
 			<?php if (have_posts()) : ?>
