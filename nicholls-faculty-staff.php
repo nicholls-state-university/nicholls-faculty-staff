@@ -884,10 +884,10 @@ function nicholls_fs_display_meta_item( $meta_item = '', $return = false ) {
 
 }
 
+
 add_filter( 'request', 'nicholls_fs_archive_order');
 /**
-* Email contact form - Ajax actions
-*
+* Reset listings to alphabetical
 */
 function nicholls_fs_archive_order( $vars ) {
   if ( !is_admin() && isset( $vars['post_type'] ) && $vars['post_type'] == 'n-faculty-staff' ) {
