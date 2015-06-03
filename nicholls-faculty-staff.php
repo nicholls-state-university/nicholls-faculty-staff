@@ -9,13 +9,183 @@ Author URI: http://nicholls.edu
 */
 
 /**
- * Get the CMB2 bootstrap!
+ * Include CMB2 framework https://github.com/WebDevStudios/CMB2
+ * Get the bootstrap! If using the plugin from wordpress.org, REMOVE THIS!
  */
 
 if ( file_exists( dirname( __FILE__ ) . '/cmb2/init.php' ) ) {
 	require_once dirname( __FILE__ ) . '/cmb2/init.php';
 } elseif ( file_exists( dirname( __FILE__ ) . '/CMB2/init.php' ) ) {
 	require_once dirname( __FILE__ ) . '/CMB2/init.php';
+}
+
+add_action('init', 'nicholls_fs_init');
+/**
+* Initialize and register custom post types
+*/
+function nicholls_fs_init() {  
+
+    // Global config variagle
+    global $nicholls_fs_core;
+    
+    // Setup custom post type
+    $args = array(  
+        'label' => __( 'Nicholls ' ) . $nicholls_fs_core->default_title,
+        'labels' => array(
+                'name' => $nicholls_fs_core->default_title,
+                'singular_name' => $nicholls_fs_core->default_title,
+                'add_new' => __( 'Add New ' ) . $nicholls_fs_core->default_title,
+                'add_new_item' => __( 'Add New ' ) . $nicholls_fs_core->default_title,
+                'edit_item' => __( 'Edit ' ) . $nicholls_fs_core->default_title,
+                'new_item' => __( 'Add New ' ) . $nicholls_fs_core->default_title,
+                'view_item' => __( 'View ' ) . $nicholls_fs_core->default_title,
+                'search_items' => __( 'Search ' ) . $nicholls_fs_core->default_title,
+                'not_found' => __( 'Nothing found' ),
+                'not_found_in_trash' => __( 'Nothing found in trash' )
+		),
+		'taxonomies'    => array(
+			'n-faculty-staff-taxonomy',
+		),		
+        'public' => true, 
+        'show_ui' => true,  
+        'capability_type' => 'post',  
+        'hierarchical' => false,
+        'has_archive' => true,
+        'rewrite' => array( 
+			'slug' => $nicholls_fs_core->default_url,
+			'with_front' => false
+		),  
+        'supports' => array('title', 'editor', 'thumbnail', 'revisions', 'page-attributes'),
+        'register_meta_box_cb' => 'nicholls_fs_add_metaboxes'
+       );  
+    register_post_type( 'n-faculty-staff' , $args );
+
+	register_taxonomy(
+		'n-faculty-staff-taxonomy',
+		array(
+			'n-faculty-staff',
+		),
+		array(
+			'labels'            => array(
+				'name'              => _x('Departments or Areas', 'prefix_portfolio', 'text_domain'),
+				'singular_name'     => _x('Department or Area', 'prefix_portfolio', 'text_domain'),
+				'menu_name'         => __('Departments or Areas', 'text_domain'),
+				'all_items'         => __('All Departments or Areas', 'text_domain'),
+				'edit_item'         => __('Edit Department or Area', 'text_domain'),
+				'view_item'         => __('View Department or Area', 'text_domain'),
+				'update_item'       => __('Update Department or Area', 'text_domain'),
+				'add_new_item'      => __('Add New Department or Area', 'text_domain'),
+				'new_item_name'     => __('New Department or Area Name', 'text_domain'),
+				'search_items'      => __('Search Departments or Areas', 'text_domain'),
+			),
+			'show_admin_column' => true,
+			'hierarchical'      => true,
+			'rewrite'           => array( 
+				'slug' => 'faculty-staff-departments',
+				'with_front' => false
+			),
+		)
+	);
+    
+    // Setup custom image size  
+    add_image_size( 'nicholls-fs-medium', 240, 360 );
+    add_image_size( 'nicholls-fs-thumb', 120, 180 );
+    
+	// Needs moved to activation after testing
+	flush_rewrite_rules( false );
+
+	if ( is_user_logged_in() ) 
+		add_action( 'wp_ajax_nicholls-fs-form-email', 'nicholls_fs_ajax_simple_contact_form' );
+	else
+		add_action( 'wp_ajax_nopriv_nicholls-fs-form-email', 'nicholls_fs_ajax_simple_contact_form' );
+    
+}
+
+add_action( 'wp_enqueue_scripts', 'nicholls_fs_js_enqueue' );
+/**
+* Email contact form - JavaScript
+*
+*/
+function nicholls_fs_js_enqueue() {
+
+	if ( 'n-faculty-staff' != get_post_type() ) return;
+	
+	//Enqueue Javascript & jQuery if not already loaded
+	wp_enqueue_script('jquery');
+	wp_enqueue_script('nicholls-fs-js', plugins_url( 'js/nicholls-fs.js' , __FILE__ ), array('jquery'));
+	wp_enqueue_script('magnific-popup-js', plugins_url( 'Magnific-Popup-master/dist/jquery.magnific-popup.min.js' , __FILE__ ), array('jquery'));
+	
+	// Enqueue CSS
+	wp_enqueue_style( 'magnific-popup-css', plugins_url( 'Magnific-Popup-master/dist/magnific-popup.css' , __FILE__ ) );
+
+	$localize = array(
+		'ajaxurl' => admin_url( 'admin-ajax.php' )
+	);
+	wp_localize_script('nicholls-fs-js', 'nicholls_fs_js_obj', $localize);
+}
+
+/**
+* Email contact form - Ajax actions
+*
+*/
+function nicholls_fs_ajax_simple_contact_form() {
+
+	if ( isset( $_POST['nicholls_fs_email_form_nonce'] ) && wp_verify_nonce( $_POST['nicholls_fs_email_form_nonce'], 'nicholls_fs_email_form' ) ) {
+
+		$name = sanitize_text_field($_POST['nicholls-fs-form-email-name']);
+		$email = sanitize_email($_POST['nicholls-fs-form-email-email']);
+		$message = stripslashes( wp_filter_kses($_POST['nicholls-fs-form-email-message']) );
+		$form_url = esc_url( $_POST['nicholls-fs-form-url'] );
+		$subject = 'Nicholls Web Email - Message from ' . $name; 
+		
+		$to = sanitize_email($_POST['nicholls-fs-form-email-addr']);
+
+		$headers[] = 'From: ' . $name . ' <' . $email . '>' . "\r\n";
+		$headers[] = 'Reply-To: ' . $name . ' <' . $email . '>' . "\r\n";
+		$headers[] = 'Content-type: text/html' . "\r\n"; //Enables HTML ContentType. Remove it for Plain Text Messages
+		
+		$message = '<br/>' . $message . '<br/><br/><hr/>This messange sent using a form found at: ' . $form_url . '<br/>Please contact nichweb@nicholls.edu for support.';
+		
+		add_filter('wp_mail_content_type',create_function('', 'return "text/html";'));
+		$check = wp_mail( $to, $subject, $message, $headers );
+		
+		wp_send_json_error( $check );
+
+	}
+
+	die(); // Important
+}
+
+add_action( 'phpmailer_init', 'nicholls_fs_configure_smtp', 999 );
+/**
+* Configure SMTP & Advanced PHPMail options
+*/
+function nicholls_fs_configure_smtp( $phpmailer ){
+
+    $phpmailer->From = 'nichweb@nicholls.edu';
+    $phpmailer->FromName='Nicholls Webmanager';
+	$phpmailer->Sender = 'nichweb@nicholls.edu';
+
+	/*
+	* Expception handling for PHPMailer to catch errors for ajax requests.
+	* see: https://gist.github.com/franz-josef-kaiser/5840282
+	*/
+	/*
+	$error = null;
+	try {
+		$sent = $phpmailer->Send();
+		! $sent AND $error = new WP_Error( 'phpmailerError', $sent->ErrorInfo );
+	}
+	catch ( phpmailerException $e ) {
+		$error = new WP_Error( 'phpmailerException', $e->errorMessage() );
+	}
+	catch ( Exception $e ) {
+		$error = new WP_Error( 'defaultException', $e->getMessage() );
+	}
+ 
+	if ( is_wp_error( $error ) )
+		return printf( "%s: %s", $error->get_error_code(), $error->get_error_message() );
+	*/
 }
 
 /**
@@ -452,95 +622,6 @@ function nicholls_fs_filter_resize_dimensions( $payload, $orig_w, $orig_h, $dest
  
 }
 
-add_action( 'wp_enqueue_scripts', 'nicholls_fs_js_enqueue' );
-/**
-* Email contact form - JavaScript
-*
-*/
-function nicholls_fs_js_enqueue() {
-
-	if ( 'n-faculty-staff' != get_post_type() ) return;
-	
-	//Enqueue Javascript & jQuery if not already loaded
-	wp_enqueue_script('jquery');
-	wp_enqueue_script('nicholls-fs-js', plugins_url( 'js/nicholls-fs.js' , __FILE__ ), array('jquery'));
-	wp_enqueue_script('magnific-popup-js', plugins_url( 'Magnific-Popup-master/dist/jquery.magnific-popup.min.js' , __FILE__ ), array('jquery'));
-	
-	// Enqueue CSS
-	wp_enqueue_style( 'magnific-popup-css', plugins_url( 'Magnific-Popup-master/dist/magnific-popup.css' , __FILE__ ) );
-
-	$localize = array(
-		'ajaxurl' => admin_url( 'admin-ajax.php' )
-	);
-	wp_localize_script('nicholls-fs-js', 'nicholls_fs_js_obj', $localize);
-}
-
-add_action( 'wp_ajax_nicholls-fs-form-email', 'nicholls_fs_ajax_simple_contact_form' );
-add_action( 'wp_ajax_nopriv_nicholls-fs-form-email', 'nicholls_fs_ajax_simple_contact_form' );
-/**
-* Email contact form - Ajax actions
-*
-*/
-function nicholls_fs_ajax_simple_contact_form() {
-
-	if ( isset( $_POST['nicholls_fs_email_form_nonce'] ) && wp_verify_nonce( $_POST['nicholls_fs_email_form_nonce'], 'nicholls_fs_email_form' ) ) {
-
-		$name = sanitize_text_field($_POST['nicholls-fs-form-email-name']);
-		$email = sanitize_email($_POST['nicholls-fs-form-email-email']);
-		$message = stripslashes( wp_filter_kses($_POST['nicholls-fs-form-email-message']) );
-		$form_url = esc_url( $_POST['nicholls-fs-form-url'] );
-		$subject = 'Nicholls Web Email - Message from ' . $name; 
-		
-		$to = sanitize_email($_POST['nicholls-fs-form-email-addr']);
-
-		$headers[] = 'From: ' . $name . ' <' . $email . '>' . "\r\n";
-		$headers[] = 'Reply-To: ' . $name . ' <' . $email . '>' . "\r\n";
-		$headers[] = 'Content-type: text/html' . "\r\n"; //Enables HTML ContentType. Remove it for Plain Text Messages
-		
-		$message = '<br/>' . $message . '<br/><br/><hr/>This messange sent using a form found at: ' . $form_url . '<br/>Please contact nichweb@nicholls.edu for support.';
-		
-		add_filter('wp_mail_content_type',create_function('', 'return "text/html";'));
-		$check = wp_mail( $to, $subject, $message, $headers );
-		
-		wp_send_json_error( $check );
-
-	}
-
-	die(); // Important
-}
-
-add_action( 'phpmailer_init', 'nicholls_fs_configure_smtp', 999 );
-/**
-* Configure SMTP & Advanced PHPMail options
-*/
-function nicholls_fs_configure_smtp( $phpmailer ){
-
-    $phpmailer->From = 'nichweb@nicholls.edu';
-    $phpmailer->FromName='Nicholls Webmanager';
-	$phpmailer->Sender = 'nichweb@nicholls.edu';
-
-	/*
-	* Expception handling for PHPMailer to catch errors for ajax requests.
-	* see: https://gist.github.com/franz-josef-kaiser/5840282
-	*/
-	/*
-	$error = null;
-	try {
-		$sent = $phpmailer->Send();
-		! $sent AND $error = new WP_Error( 'phpmailerError', $sent->ErrorInfo );
-	}
-	catch ( phpmailerException $e ) {
-		$error = new WP_Error( 'phpmailerException', $e->errorMessage() );
-	}
-	catch ( Exception $e ) {
-		$error = new WP_Error( 'defaultException', $e->getMessage() );
-	}
- 
-	if ( is_wp_error( $error ) )
-		return printf( "%s: %s", $error->get_error_code(), $error->get_error_message() );
-	*/
-}
-
 add_action( 'wp_enqueue_scripts', 'nicholls_fs_resources_load', 11 );
 /**
 * Load resources when shortcode is detected. Only for CSS and Scripts since we're
@@ -565,83 +646,6 @@ function nicholls_fs_resources_load() {
 		wp_enqueue_style( 'j-flex-style' );
 */
 }
-
-add_action('init', 'nicholls_fs_init');
-/**
-* Initialize and register custom post types
-*/
-function nicholls_fs_init() {  
-
-    // Global config variagle
-    global $nicholls_fs_core;
-    
-    // Setup custom post type
-    $args = array(  
-        'label' => __( 'Nicholls ' ) . $nicholls_fs_core->default_title,
-        'labels' => array(
-                'name' => $nicholls_fs_core->default_title,
-                'singular_name' => $nicholls_fs_core->default_title,
-                'add_new' => __( 'Add New ' ) . $nicholls_fs_core->default_title,
-                'add_new_item' => __( 'Add New ' ) . $nicholls_fs_core->default_title,
-                'edit_item' => __( 'Edit ' ) . $nicholls_fs_core->default_title,
-                'new_item' => __( 'Add New ' ) . $nicholls_fs_core->default_title,
-                'view_item' => __( 'View ' ) . $nicholls_fs_core->default_title,
-                'search_items' => __( 'Search ' ) . $nicholls_fs_core->default_title,
-                'not_found' => __( 'Nothing found' ),
-                'not_found_in_trash' => __( 'Nothing found in trash' )
-		),
-		'taxonomies'    => array(
-			'n-faculty-staff-taxonomy',
-		),		
-        'public' => true, 
-        'show_ui' => true,  
-        'capability_type' => 'post',  
-        'hierarchical' => false,
-        'has_archive' => true,
-        'rewrite' => array( 
-			'slug' => $nicholls_fs_core->default_url,
-			'with_front' => false
-		),  
-        'supports' => array('title', 'editor', 'thumbnail', 'revisions', 'page-attributes'),
-        'register_meta_box_cb' => 'nicholls_fs_add_metaboxes'
-       );  
-    register_post_type( 'n-faculty-staff' , $args );
-
-	register_taxonomy(
-		'n-faculty-staff-taxonomy',
-		array(
-			'n-faculty-staff',
-		),
-		array(
-			'labels'            => array(
-				'name'              => _x('Departments or Areas', 'prefix_portfolio', 'text_domain'),
-				'singular_name'     => _x('Department or Area', 'prefix_portfolio', 'text_domain'),
-				'menu_name'         => __('Departments or Areas', 'text_domain'),
-				'all_items'         => __('All Departments or Areas', 'text_domain'),
-				'edit_item'         => __('Edit Department or Area', 'text_domain'),
-				'view_item'         => __('View Department or Area', 'text_domain'),
-				'update_item'       => __('Update Department or Area', 'text_domain'),
-				'add_new_item'      => __('Add New Department or Area', 'text_domain'),
-				'new_item_name'     => __('New Department or Area Name', 'text_domain'),
-				'search_items'      => __('Search Departments or Areas', 'text_domain'),
-			),
-			'show_admin_column' => true,
-			'hierarchical'      => true,
-			'rewrite'           => array( 
-				'slug' => 'faculty-staff-departments',
-				'with_front' => false
-			),
-		)
-	);
-    
-    // Setup custom image size  
-    add_image_size( 'nicholls-fs-medium', 240, 360 );
-    add_image_size( 'nicholls-fs-thumb', 120, 180 );
-    
-	// Needs moved to activation after testing
-	flush_rewrite_rules( false );
-    
-}  
 
 add_action('save_post', 'nicholls_fs_save_meta', 1, 2); // save the custom fields
 /**
@@ -756,7 +760,7 @@ function nicholls_fs_metaboxes() {
 		'desc'       => __( 'Use full title as indicated by Human Resources', 'nicholls_fs' ),
 		'id'         => $prefix . 'employee_title',
 		'type'       => 'text',
-		// 'show_on_cb' => 'yourprefix_hide_if_no_cats', // function should return a bool value
+		// 'show_on_cb' => 'yourprefix_hide_if_no_cats', // Check updated. function should return a bool value
 		// 'sanitization_cb' => 'my_custom_sanitization', // custom sanitization callback parameter
 		// 'escape_cb'       => 'my_custom_escaping',  // custom escaping callback parameter
 		// 'on_front'        => false, // Optionally designate a field to wp-admin only
