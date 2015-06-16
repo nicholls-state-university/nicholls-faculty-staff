@@ -82,7 +82,7 @@ function nicholls_fs_init() {
 			'hierarchical'      => true,
 			'rewrite'           => array( 
 				'slug' => 'faculty-staff-departments',
-				'with_front' => false
+				'with_front' => true
 			),
 		)
 	);
