@@ -721,10 +721,10 @@ function nicholls_fs_do_theme_redirect($url) {
  * Limit, change number of posts in archive pages
  */
 add_filter('pre_get_posts', 'nicholls_fs_pre_get_posts');
-function nicholls_fs_pre_get_posts($query){
+function nicholls_fs_pre_get_posts( $query ) {
 	if ( $query->is_archive && $query->query_vars['post_type'] == 'n-faculty-staff') {
 		$query->set( 'posts_per_page', -1 );
-		$query->set( 'orderby', 'title' );
+		$query->set( 'orderby', 'menu_order' );
 		$query->set( 'order', 'ASC' );		
 	}
 	return $query;
@@ -889,7 +889,8 @@ function nicholls_fs_display_meta_item( $meta_item = '', $return = false ) {
 }
 
 
-add_filter( 'request', 'nicholls_fs_archive_order');
+// This is not the filter to use, but it is interesting.
+//add_filter( 'request', 'nicholls_fs_archive_order');
 /**
 * Reset listings to alphabetical
 */
