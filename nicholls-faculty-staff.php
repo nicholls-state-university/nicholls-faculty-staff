@@ -82,7 +82,7 @@ function nicholls_fs_init() {
 			'hierarchical'      => true,
 			'rewrite'           => array( 
 				'slug' => 'faculty-staff-departments',
-				'with_front' => true
+				'with_front' => false
 			),
 		)
 	);
@@ -716,11 +716,10 @@ function nicholls_fs_do_theme_redirect($url) {
     }
 }
 
-
+add_filter('pre_get_posts', 'nicholls_fs_pre_get_posts');
 /**
  * Limit, change number of posts in archive pages
  */
-add_filter('pre_get_posts', 'nicholls_fs_pre_get_posts');
 function nicholls_fs_pre_get_posts( $query ) {
 	if ( $query->is_archive && $query->query_vars['post_type'] == 'n-faculty-staff') {
 		$query->set( 'posts_per_page', -1 );
