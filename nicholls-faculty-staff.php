@@ -664,7 +664,7 @@ function nicholls_fs_save_meta($post_id, $post) {
 		delete_post_meta( $post->ID, '_thumbnail_id' ); 
 }
 
-add_filter('template_redirect', 'nicholls_fs_template_smart');
+//add_filter('template_redirect', 'nicholls_fs_template_smart');
 /*
 * Filter the single entry and archive templates with our custom function
 */
@@ -703,6 +703,36 @@ function nicholls_fs_template_smart(){
     }
 }
 
+add_filter( 'single_template', 'nicholls_fs_template_single' ) ;
+/*
+* Filter the archive templates with our custom function
+*/
+function nicholls_fs_template_single( $single_template ) {
+	global $post, $query;
+	
+    $single_template_name = 'nicholls-faculty-staff-template.php';
+    
+     if ( get_post_type() == 'n-faculty-staff' && is_single() ) {
+          $single_template = dirname( __FILE__ ) . '/' . $single_template_name;
+     }
+     return $single_template;
+}
+
+add_filter( 'archive_template', 'nicholls_fs_template_archive' ) ;
+/*
+* Filter the archive templates with our custom function
+*/
+function nicholls_fs_template_archive( $archive_template ) {
+	global $post, $query;
+	
+	$archive_template_name = 'nicholls-faculty-staff-archive-template.php';
+    
+     if ( get_post_type() == 'n-faculty-staff' && is_archive() ) {
+          $archive_template = dirname( __FILE__ ) . '/' . $archive_template_name;
+     }
+     return $archive_template;
+}
+
 /**
 * Helper function for template redirections
 */
@@ -721,11 +751,19 @@ add_filter('pre_get_posts', 'nicholls_fs_pre_get_posts');
  * Limit, change number of posts in archive pages
  */
 function nicholls_fs_pre_get_posts( $query ) {
-	if ( $query->is_archive && $query->query_vars['post_type'] == 'n-faculty-staff') {
-		$query->set( 'posts_per_page', -1 );
-		$query->set( 'orderby', 'menu_order' );
-		$query->set( 'order', 'ASC' );		
-	}
+	
+    if ( get_query_var('post_type') == 'n-faculty-staff' || get_query_var('n-faculty-staff-taxonomy', 0) ) {
+		if ( !is_single() ) {
+			$query->set( 'posts_per_page', -1 );
+			
+			//$q = new WP_Query( array( 'orderby' => array( 'title' => 'DESC', 'menu_order' => 'ASC' ) ) );
+			
+			$query->set( 'orderby', array( 'menu_order' => 'ASC', 'title' => 'ASC' ) );
+			//$query->set( 'orderby', 'menu_order' );
+			//$query->set( 'order', 'ASC' );		
+		}
+    }
+    
 	return $query;
 }
 
@@ -900,4 +938,16 @@ function nicholls_fs_archive_order( $vars ) {
   }
 
   return $vars;
+}
+
+//add_filter( 'found_posts', 'debug_found' );
+/* 
+* Debug filter to test post queries
+*/
+function debug_found( $thru ) {
+
+	global $wpdb;
+	echo 'ISSUE::' . $wpdb->last_query;
+
+	return $thru;
 }
