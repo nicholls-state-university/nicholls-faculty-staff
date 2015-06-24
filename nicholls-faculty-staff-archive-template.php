@@ -34,7 +34,6 @@ global $nicholls_fs_core;
 			
 <?php nicholls_fs_display_departments() ?>
 
-
 <?php while ( have_posts()) : the_post();  ?>
 <div class="nicholls-fs-employee clear-group">
 

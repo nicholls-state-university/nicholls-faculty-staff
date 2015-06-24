@@ -33,19 +33,7 @@ get_header();
 				<?php the_content(); ?>
 			</div>
 						
-
-<?php nicholls_fs_email_form(); ?>
-<?php 
-// Deebug
-/*
-$custom_fields = get_post_custom();
-
-foreach ( $custom_fields as $field_key => $field_values ) {
-	//if(!isset($field_values[0])) continue;
-	echo $field_key . '=>' . $field_values[0] . '<br />';
-}
-*/			
-?>
+			<?php nicholls_fs_email_form(); ?>
 			
 			</div>
 
