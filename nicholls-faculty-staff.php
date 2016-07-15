@@ -144,10 +144,13 @@ function nicholls_fs_ajax_simple_contact_form() {
 		$headers[] = 'Reply-To: ' . $name . ' <' . $email . '>' . "\r\n";
 		$headers[] = 'Content-type: text/html' . "\r\n"; //Enables HTML ContentType. Remove it for Plain Text Messages
 		
-		$message = '<br/>' . $message . '<br/><br/><hr/>This messange sent using a form found at: ' . $form_url . '<br/>Please contact nichweb@nicholls.edu for support.';
+		$message_final = '<br/>';
+		$message_final .= '<strong>From:</strong> ' . $name . '<br/>';
+		$message_final .= '<strong>From Email:</strong> ' . $to . '<br/>';
+		$message_final .= '<br/>' . $message . '<br/><br/><hr/>This messange sent using a form found at: ' . $form_url . '<br/>Please contact nichweb@nicholls.edu for support.';
 		
 		add_filter('wp_mail_content_type',create_function('', 'return "text/html";'));
-		$check = wp_mail( $to, $subject, $message, $headers );
+		$check = wp_mail( $to, $subject, $message_final, $headers );
 		
 		wp_send_json_error( $check );
 
