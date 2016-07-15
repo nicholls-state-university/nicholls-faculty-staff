@@ -4,14 +4,12 @@
 *
 * Template generic archives.
 *
-* @package FNBX Theme
-* @subpackage Template
 */
-global $nicholls_fs_core;
 
-?>
-<?php get_header() ?>
+get_header(); ?>
 
+	<div id="primary" class="content-area">
+		<main id="main" class="site-main" role="main">
 <?php
 
 // This is the main title for the archive pages.
@@ -58,6 +56,8 @@ global $nicholls_fs_core;
 		<?php do_action( 'fnbx_template_archive_end', 'template_archive' ) ?>
 		<!-- END: template_archive -->
 
-<?php get_sidebar() ?>
+		</main><!-- #main -->
+	</div><!-- #primary -->
 
-<?php get_footer() ?>
+<?php get_sidebar(); ?>
+<?php get_footer(); ?>
