@@ -44,6 +44,7 @@ get_header(); ?>
 		<?php nicholls_fs_display_meta_item( '_nicholls_fs_employee_dept' ); ?>
 		<?php nicholls_fs_display_meta_item( '_nicholls_fs_employee_email' ); ?>
 		<?php nicholls_fs_display_meta_item( '_nicholls_fs_phone' ); ?>
+		<?php nicholls_fs_display_meta_item( '_nicholls_fs_phone_mobile' ); ?>
 		<?php nicholls_fs_display_meta_item( '_nicholls_fs_office' ); ?>
 	</div>
 

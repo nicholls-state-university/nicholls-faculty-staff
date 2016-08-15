@@ -504,12 +504,24 @@ function nicholls_fs_display_departments() {
 
 	if ($terms) {
 		echo '<strong>Departments or Areas</strong><br />';
-		echo '<ul class="nicholls-fs-department-links">';
-		echo '<li class="nicholls-fs-department-link">' . '<a href="' . esc_attr( get_site_url() . '/' . $nicholls_fs_core->default_url ) . '" title="' . __( "View all" ) . '" ' . '>' . __( "View all" ) . '</a></li>';
-		foreach($terms as $term) {
-			echo '<li class="nicholls-fs-department-link">' . '<a href="' . esc_attr( get_term_link($term, $taxonomy) ) . '" title="' . sprintf( __( "View all posts in %s" ), $term->name ) . '" ' . '>' . $term->name.'</a></li>';
-		}
-		echo '</ul>';
+		
+		if ( count( $terms ) < 10 ) {
+			echo '<ul class="nicholls-fs-department-links">';
+			echo '<li class="nicholls-fs-department-link">' . '<a href="' . esc_attr( get_site_url() . '/' . $nicholls_fs_core->default_url ) . '" title="' . __( "View all" ) . '" ' . '>' . __( "View all" ) . '</a></li>';
+			foreach($terms as $term) {
+				echo '<li class="nicholls-fs-department-link">' . '<a href="' . esc_attr( get_term_link($term, $taxonomy) ) . '" title="' . sprintf( __( "View all posts in %s" ), $term->name ) . '" ' . '>' . $term->name.'</a></li>';
+			}
+			echo '</ul>';
+		} else {
+			echo '<form name="n-faculty-staff-taxonomy-select">';
+			echo '<select name="n-faculty-staff-taxonomy-select-menu" onChange="window.document.location.href=this.options[this.selectedIndex].value;" value="GO">';
+			echo '<option selected="selected">-- Select --</option>';
+				foreach($terms as $term) {
+					echo '<option value="' . esc_attr( get_term_link($term, $taxonomy) ) . '">' . $term->name.'</option>';
+				}
+			echo '</select>';
+			echo '</form>';
+		}	
 	}
 
 	echo '</div>';
@@ -830,6 +842,14 @@ function nicholls_fs_metaboxes() {
 		'id'         => $prefix . 'phone',
 		'type'       => 'text'
 	) );
+	
+	// Add field to metabox group
+	$cmb_demo->add_field( array(
+		'name'       => __( 'Employee Mobile Phone Number', 'nicholls_fs' ),
+		'desc'       => __( 'If available for use, please input full phone number with area code xxx.xxx.xxxx', 'nicholls_fs' ),
+		'id'         => $prefix . 'phone_mobile',
+		'type'       => 'text'
+	) );	
 
 	// Add field to metabox group
 	$cmb_demo->add_field( array(
@@ -872,6 +892,10 @@ function nicholls_fs_display_meta_item( $meta_item = '', $return = false ) {
 			'name' => 'Phone',
 			'class' => 'nicholls-fs-phone'
 		),
+		'_nicholls_fs_phone_mobile' => array(
+			'name' => 'Mobile Phone',
+			'class' => 'nicholls-fs-phone-mobile'
+		),		
 		'_nicholls_fs_office' => array(
 			'name' => 'Office Location',
 			'class' => 'nicholls-fs-office'
